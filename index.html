@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio - Lorenzo Kurrle Borges</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="pf" id="pf">
+        <div class="stars" id="stars"></div>
+        <div class="nebula nebula1"></div>
+        <div class="nebula nebula2"></div>
+
+        <nav class="navbar">
+            <div class="nav-left">
+                <div class="hamburger" onclick="toggleSb()"><span></span><span></span><span></span></div>
+                <span class="nav-name">Lorenzo Kurrle Borges</span>
+            </div>
+            <div class="ano-tabs">
+                <button class="ano-tab active" id="t1" onclick="setAno(1)">1° ano</button>
+                <button class="ano-tab" id="t2" onclick="setAno(2)">2° ano</button>
+                <button class="ano-tab" id="t3" onclick="setAno(3)">3° ano</button>
+            </div>
+        </nav>
+
+        <div class="overlay-sidebar" id="ov" onclick="toggleSb()"></div>
+        <div class="sidebar" id="sb">
+            <button class="sb-item" onclick="setAno(1);toggleSb()">1° Ano</button>
+            <button class="sb-item" onclick="setAno(2);toggleSb()">2° Ano</button>
+            <button class="sb-item" onclick="setAno(3);toggleSb()">3° Ano</button>
+            <button class="sb-item" onclick="goTo('sobre');toggleSb()">Sobre mim</button>
+        </div>
+
+        <div class="page visible" id="page-home">
+
+<div class="cover" id="cover">
+    <div class="cover-info">
+        <div class="cover-eyebrow">Curso Técnico · Desenvolvimento de Sistemas</div>
+        <h1 class="hero-title">Lorenzo Kurrle<br><span>Borges</span></h1>
+        <p class="hero-sub">Registro de disciplinas, projetos e aprendizados no ensino médio técnico.</p>
+        
+    </div>
+
+    <div class="cover-photos-wrapper">
+                      <iframe 
+                          src="https://docs.google.com/document/d/1Cd7_kBqVWU8MS1fSEFYrjaXvsQhIhis5h38qhQ73VfU/preview" 
+                          width="100%" 
+                          height="500px" 
+                          allow="autoplay">
+                      </iframe>
+    </div>
+</div>
+
+            <div id="main-content">
+<div class="content-section" id="atividades">
+                    <h2>Atividades</h2>
+                    <p style="margin-bottom: 30px;">Selecione o ano letivo para explorar as disciplinas e projetos.</p>
+                    
+                    <div class="page-ano-tabs">
+                        <button class="page-ano-tab active" id="pt1" onclick="setAno(1)">1° ano</button>
+                        <button class="page-ano-tab" id="pt2" onclick="setAno(2)">2° ano</button>
+                        <button class="page-ano-tab" id="pt3" onclick="setAno(3)">3° ano</button>
+                    </div>
+
+                    <div class="two-blocks">
+                        <div class="block" onclick="openSelector('basicas')">
+                            <div style="color:#C8C8FF; font-weight:600">Matérias Básicas</div>
+                        </div>
+                        <div class="block" onclick="openSelector('tecnico')">
+                            <div id="tec-title" style="color:#C8C8FF; font-weight:600">Matérias do Técnico</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-section" id="about">
+                    <h2>Sobre Mim</h2>
+                    <p>Sou uma pessoa movida pela vontade de aprender e crescer dentro dos meus próprios princípios. Valorizo o tempo e a responsabilidade. Tenho o desejo sincero de deixar uma marca positiva, de ser lembrado como alguém que, de alguma forma, ensinou algo ao mundo.
+                        <br><br> Gosto mais de exercícios racionais do que físicos. Sou apaixonado por jogos que desafiam a mente, como Xadrez e Coup, e cartas no geral e também encontro equilíbrio em esportes como vôlei e natação.</p>
+                </div>
+
+                <div class="content-section" id="certificados">
+                    <h2>Certificados</h2>
+                    <p>Conquistas, cursos e especializações acadêmicas.</p>
+                    
+                    <div class="cert-grid">
+                        <div class="cert-placeholder">
+                            <p>Esta seção está sendo preparada para exibir meus certificados.(ainda quero completar)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        
+
+        <div class="page hidden" id="page-materia">
+            <div style="padding: 40px; padding-top: 80px;">
+                <button class="back-btn" onclick="goHome()">← Voltar</button>
+                <div id="mp-tag" style="font-size: 11px; font-weight: 500; color: #5A5A99; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px;"></div>
+                <h1 id="mp-title" style="color: white; font-family:Syne;"></h1>
+                <p id="mp-sub" style="color: #5A5A99; margin-top: 10px;"></p>
+                <div style="height: 0.5px; background: rgba(123,127,212,0.12); margin: 28px 0;"></div>
+                <div style="font-size: 11px; font-weight: 500; color: #3D3D6B; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 16px;">Trabalhos & projetos</div>
+                
+                <div id="activities-container"></div>
+                
+            </div>
+        </div>
+
+        <div class="modal-overlay" id="modal-overlay" onclick="closeSelector()">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h2 id="modal-title" class="modal-title">Matérias</h2>
+                    <button class="close-modal" onclick="closeSelector()">✕</button>
+                </div>
+                <div id="modal-list" class="modal-list">
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="data/1ano.js"></script>
+    <script src="data/2ano.js"></script>
+    <script src="data/3ano.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -8,8 +8,10 @@
     <meta name="theme-color" content="#161920">
 
     <!-- Banna: uma equipe de cursores constrói a página na frente do visitante.
-         Precisa ficar no <head>, sem defer/async. -->
+         data-auto="false": só começa quando o visitante clica / aperta Enter ou Espaço
+         (veja a tela de abertura em script.js). -->
     <script src="banna.js"
+        data-auto="false"
         data-speed="1.35"
         data-agents="9"
         data-max-wait="5"
@@ -18,6 +20,14 @@
         data-label-agents="construtores"
         data-label-layers="camadas"
         data-label-skip="Mostrar tudo"></script>
+    <script>
+        // Tela de abertura: esconde o site até o visitante "entrar".
+        // Quem pediu menos movimento no sistema, ou usa ?nobanna, vê o site direto.
+        (function () {
+            var semAnimacao = matchMedia('(prefers-reduced-motion: reduce)').matches || /[?&]nobanna/.test(location.search);
+            if (!semAnimacao) document.documentElement.classList.add('intro');
+        })();
+    </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,6 +43,21 @@
         <div class="blob blob-c"></div>
         <div class="noise"></div>
     </div>
+
+    <!-- Tela de abertura: cursores girando até o visitante entrar -->
+    <button class="intro-screen" id="intro" type="button" data-banna-skip aria-label="Entrar no portfólio">
+        <span class="intro-orbit" id="intro-orbit" aria-hidden="true"></span>
+        <span class="intro-ring" aria-hidden="true"></span>
+        <span class="intro-top">
+            <span class="intro-logo">LKB<i></i></span>
+            <span class="intro-name">Lorenzo Kurrle Borges · Portfólio 3° ano</span>
+        </span>
+        <span class="intro-hint">
+            <span class="intro-hint-desk">Clique ou aperte <kbd>Enter</kbd> / <kbd>Espaço</kbd> para construir</span>
+            <span class="intro-hint-touch">Toque na tela para construir</span>
+            <span class="intro-sub">9 cursores esperando você</span>
+        </span>
+    </button>
 
     <header class="nav" id="nav">
         <a class="nav-logo" href="#/" aria-label="Início">

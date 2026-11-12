@@ -190,7 +190,7 @@ function route() {
     pendingScroll = null;
     if (alvo && !abrirMateria) requestAnimationFrame(() => scrollToId(alvo, 'instant'));
     // Os cursores constroem cada nova página de matéria
-    if (abrirMateria && window.Banna) {
+    if (abrirMateria && window.Banna && CONSTRUIR) {
       document.querySelectorAll('.nav, .footer').forEach((el) => el.setAttribute('data-banna-skip', ''));
       window.Banna.start();
     }
@@ -295,8 +295,77 @@ if (matchMedia('(pointer: fine)').matches && !matchMedia('(prefers-reduced-motio
   }, { passive: true });
 }
 
+// ---------------------------------------------------------------- abertura
+
+// Sem animação para quem pediu menos movimento no sistema ou usa ?nobanna
+const CONSTRUIR = !matchMedia('(prefers-reduced-motion: reduce)').matches && !/[?&]nobanna/.test(location.search);
+
+function initIntro() {
+  const root = document.documentElement;
+  const intro = $('#intro');
+  if (!root.classList.contains('intro')) { intro.remove(); return; }
+
+  const cores = ['#D7422C', '#E2C9AB', '#E5E5E5', '#F06A4F', '#C9A27E', '#B8343F'];
+  const N = 9; // mesmo número de cursores do banna (data-agents)
+  const orbit = $('#intro-orbit');
+  const cursores = Array.from({ length: N }, (_, i) => {
+    const el = document.createElement('span');
+    el.className = 'intro-cursor';
+    el.style.setProperty('--c', cores[i % cores.length]);
+    el.innerHTML = '<svg viewBox="0 0 20 22"><path d="M2 2l15 8-6.5 2L8 19z"/></svg>';
+    orbit.append(el);
+    return el;
+  });
+
+  let raf = 0;
+  let saindo = false;
+  let raio = 70;
+  const inicio = performance.now();
+  const girar = (agora) => {
+    const t = (agora - inicio) / 1000;
+    const cx = innerWidth / 2;
+    const cy = innerHeight / 2;
+    // Antes de sair, o círculo fecha no raio em que o banna posiciona os cursores dele
+    const alvo = saindo ? 40 : 70 + Math.sin(t * 1.7) * 12;
+    raio += (alvo - raio) * 0.12;
+    cursores.forEach((el, i) => {
+      const a = (i / N) * Math.PI * 2 + t * 1.15;
+      const x = cx + Math.cos(a) * raio + Math.sin(t * 3 + i) * 3;
+      const y = cy + Math.sin(a) * raio + Math.cos(t * 2.6 + i) * 3;
+      el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+    });
+    raf = requestAnimationFrame(girar);
+  };
+  raf = requestAnimationFrame(girar);
+
+  const entrar = () => {
+    if (saindo) return;
+    saindo = true;
+    removeEventListener('keydown', onKey);
+    intro.classList.add('pressing');
+    setTimeout(() => {
+      window.scrollTo(0, 0);
+      intro.classList.add('leaving');
+      // Mostrar o site e esconder as camadas acontece no mesmo quadro: nada pisca
+      root.classList.remove('intro');
+      if (window.Banna && CONSTRUIR) window.Banna.start();
+      setTimeout(() => { cancelAnimationFrame(raf); intro.remove(); }, 450);
+    }, 220);
+  };
+  const onKey = (e) => {
+    if (e.key === 'Enter' || e.key === ' ' || e.code === 'Space') {
+      e.preventDefault();
+      entrar();
+    }
+  };
+  intro.addEventListener('click', entrar);
+  addEventListener('keydown', onKey);
+  intro.focus({ preventScroll: true });
+}
+
 // ---------------------------------------------------------------- início
 
 renderHome();
 route();
 addEventListener('hashchange', route);
+initIntro();

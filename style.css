@@ -90,6 +90,71 @@ p { margin: 0; }
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
+/* ----------------------------------------------------------------- abertura */
+
+/* Com data-auto="false" o banna não injeta o próprio CSS, então ele fica aqui */
+.sb-wait { opacity: 0 !important; }
+@media print { .sb-wait { opacity: 1 !important; } }
+
+html.intro { overflow: hidden; }
+html.intro body > :not(.bg-fx):not(#intro) { visibility: hidden; }
+
+#intro {
+  position: fixed; inset: 0; z-index: 200;
+  display: none; width: 100%; height: 100%;
+  margin: 0; padding: 0; border: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(111, 36, 43, .35), transparent 55%);
+  color: var(--text); cursor: pointer;
+  font: inherit; text-align: center;
+  transition: opacity .4s var(--ease);
+}
+html.intro #intro, #intro.leaving { display: block; }
+#intro.leaving { opacity: 0; pointer-events: none; }
+#intro:focus-visible { outline: none; }
+
+.intro-orbit { position: absolute; inset: 0; }
+.intro-cursor { position: absolute; top: 0; left: 0; color: var(--c); will-change: transform; filter: drop-shadow(0 2px 5px rgba(0,0,0,.55)); }
+.intro-cursor svg { display: block; width: 20px; height: 22px; }
+.intro-cursor path { fill: currentColor; stroke: #fff; stroke-width: 1.4; stroke-linejoin: round; }
+#intro.pressing .intro-cursor svg { transform: scale(.72); transition: transform .1s; }
+
+.intro-ring {
+  position: absolute; left: 50%; top: 50%;
+  width: 190px; height: 190px; margin: -95px 0 0 -95px;
+  border: 1px dashed rgba(226, 201, 171, .28); border-radius: 50%;
+  animation: spin 24s linear infinite;
+}
+.intro-ring::after {
+  content: ''; position: absolute; inset: 40px; border-radius: 50%;
+  border: 1px solid rgba(215, 66, 44, .25);
+  animation: intro-pulse 2.4s ease-out infinite;
+}
+@keyframes intro-pulse { from { transform: scale(.6); opacity: 1; } to { transform: scale(1.9); opacity: 0; } }
+
+.intro-top {
+  position: absolute; left: 0; right: 0; top: calc(50% - 190px);
+  display: grid; justify-items: center; gap: 10px;
+}
+.intro-logo { display: inline-flex; align-items: center; gap: 5px; font: 800 28px/1 var(--display); letter-spacing: -.02em; }
+.intro-logo i { width: 10px; height: 10px; border-radius: 50%; background: var(--red); box-shadow: 0 0 14px var(--red); }
+.intro-name { font: 500 12px/1.4 var(--mono); text-transform: uppercase; letter-spacing: .14em; color: var(--muted); }
+
+.intro-hint {
+  position: absolute; left: 0; right: 0; top: calc(50% + 130px);
+  display: grid; justify-items: center; gap: 12px; padding: 0 16px;
+  font: 500 clamp(15px, 1.4vw, 18px)/1.5 var(--body);
+  animation: intro-blink 2.2s ease-in-out infinite;
+}
+.intro-hint kbd {
+  display: inline-block; padding: 3px 9px; margin: 0 2px;
+  border: 1px solid var(--line-2); border-bottom-width: 3px; border-radius: 8px;
+  background: var(--surface-2); font: 500 .85em/1.3 var(--mono); color: var(--sand);
+}
+.intro-sub { font: 500 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .16em; color: var(--dim); }
+.intro-hint-touch { display: none; }
+@media (pointer: coarse) { .intro-hint-desk { display: none; } .intro-hint-touch { display: inline; } }
+@keyframes intro-blink { 50% { opacity: .55; } }
+
 /* ----------------------------------------------------------------- nav */
 
 .nav {

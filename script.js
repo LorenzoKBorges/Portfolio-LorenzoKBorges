@@ -1,332 +1,302 @@
-let currentYear = 1;
-const BG = { 1:'#0D0D1F', 2:'#090916', 3:'#050510' };
+/* Portfólio · 3° ano
+   Monta as trilhas (básicas / técnicas), as páginas de cada matéria e as
+   interações. Os dados ficam em data/3ano.js (objeto PORTFOLIO). */
 
-// --- Dados das disciplinas e trabalhos ---
-// Agora carregados de arquivos separados (data/1ano.json, data/2ano.json, data/3ano.json)
-// em vez de ficarem todos escritos aqui dentro. Facilita adicionar/editar atividades
-// sem mexer na lógica do site.
+const TRILHAS = {
+  basicas: { nome: 'Matérias básicas', curto: 'Básica', cor: 'var(--bas)' },
+  tecnicas: { nome: 'Matérias técnicas', curto: 'Técnico', cor: 'var(--tec)' }
+};
 
-let MAT = {};
-let BAS = {};
-let TRABALHOS = {};
+const $ = (sel, root = document) => root.querySelector(sel);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = (n) => String(n).padStart(2, '0');
+const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
 
-function inicializarDados() {
-  const todosOsDados = [
-      { ano: 1, dados: typeof DADOS_1ANO !== 'undefined' ? DADOS_1ANO : {} },
-      { ano: 2, dados: typeof DADOS_2ANO !== 'undefined' ? DADOS_2ANO : {} },
-      { ano: 3, dados: typeof DADOS_3ANO !== 'undefined' ? DADOS_3ANO : {} }
+// ---------------------------------------------------------------- início
+
+function renderHome() {
+  const todas = [...PORTFOLIO.basicas, ...PORTFOLIO.tecnicas];
+  const unicas = new Set(todas.flatMap((m) => m.atividades));
+
+  $('#hero-stats').innerHTML = [
+    [unicas.size, 'atividades e projetos'],
+    [PORTFOLIO.basicas.length, 'matérias básicas'],
+    [PORTFOLIO.tecnicas.length, 'matérias técnicas']
+  ].map(([n, l]) => `<div><dt>${pad(n)}</dt><dd>${l}</dd></div>`).join('');
+
+  for (const trilha of Object.keys(TRILHAS)) {
+    const lista = PORTFOLIO[trilha];
+    const total = lista.reduce((s, m) => s + m.atividades.length, 0);
+    $(`#count-${trilha}`).textContent = `${pad(lista.length)} matérias · ${pad(total)} trabalhos`;
+    $(`#grid-${trilha}`).innerHTML = lista.map((m, i) => {
+      const areas = [...new Set(m.atividades.map((a) => a.area).filter(Boolean))];
+      const n = m.atividades.length;
+      return `
+        <a class="subject-card${n ? '' : ' is-empty'}" href="#/${trilha}/${m.id}">
+          <span class="sc-index">${pad(i + 1)}</span>
+          <span class="sc-count">${n ? plural(n, 'trabalho', 'trabalhos') : 'em breve'}</span>
+          <h4 class="sc-title">${esc(m.nome)}</h4>
+          <p class="sc-desc">${esc(m.desc)}</p>
+          ${areas.length > 1 ? `<span class="sc-areas">${areas.map(esc).join(' · ')}</span>` : ''}
+          <span class="sc-arrow" aria-hidden="true">→</span>
+        </a>`;
+    }).join('');
+  }
+
+  // Faixa animada com o nome das matérias
+  const nomes = todas.map((m) => m.nome);
+  const faixa = nomes.map((n, i) => `<span>${esc(n)}</span><b>${i % 2 ? '✦' : '●'}</b>`).join('');
+  $('#marquee').innerHTML = faixa + faixa;
+
+  // Destaques: projetos que aparecem em mais de uma matéria
+  const destaques = [
+    { a: GRAND_PRIX, rota: '#/tecnicas/iot', n: '01' },
+    { a: PROJETO_BP, rota: '#/tecnicas/desenvolvimento', n: '02' },
+    { a: PORTFOLIO.tecnicas.find((m) => m.id === 'iot').atividades[1], rota: '#/tecnicas/iot', n: '03' }
   ];
-
-  todosOsDados.forEach(item => {
-    MAT[item.ano] = item.dados.materias || [];
-    BAS[item.ano] = item.dados.basicas || [];
-    
-    Object.keys(item.dados.trabalhos || {}).forEach(nomeMateria => {
-      TRABALHOS[`${item.ano}-${nomeMateria}`] = item.dados.trabalhos[nomeMateria];
-    });
-  });
+  $('#feature-row').innerHTML = destaques.map(({ a, rota, n }) => {
+    const onde = todas.filter((m) => m.atividades.includes(a)).map((m) => m.nome);
+    const img = a.midia.find((m) => m.tipo === 'img');
+    return `
+      <a class="feature" href="${rota}">
+        <div class="feature-media">${img ? `<img src="${esc(img.src)}" alt="" loading="lazy">` : `<div class="feature-placeholder"><span>${esc(a.titulo.split(' ')[0])}</span></div>`}</div>
+        <div class="feature-body">
+          <span class="feature-n">${n}</span>
+          <h4>${esc(a.titulo)}</h4>
+          <p>${esc(a.tag)}</p>
+          <span class="feature-where">${onde.map(esc).join(' / ')}</span>
+        </div>
+      </a>`;
+  }).join('');
 }
 
-inicializarDados();
+// ---------------------------------------------------------------- matéria
 
-
-
-function scrollToContent() {
-  const page = document.querySelector('#page-home');
-  const target = document.getElementById('main-content');
-  page.scrollTo({ top: target.offsetTop, behavior: 'smooth' });
-}
-
-function setAno(a) {
-  goHome();
-  currentYear = a;
-  document.getElementById('pf').style.background = BG[a];
-// Atualiza os botões antigos da Navbar (manteremos por enquanto)
-    [1,2,3].forEach(n => document.getElementById('t'+n).classList.toggle('active', n===a));
-    
-    // ADICIONE ESTA LINHA: Atualiza os NOVOS botões da página!
-    [1,2,3].forEach(n => {
-        let btn = document.getElementById('pt'+n);
-        if(btn) btn.classList.toggle('active', n===a);
-    });
-
-  const badge = document.getElementById('badge');
-  if(badge) badge.style.display = a === 3 ? 'inline-block' : 'none';
-
-  document.getElementById('sec-label').textContent = `Disciplinas — ${a}° ano`;
-  document.getElementById('tec-title').textContent = a === 1 ? 'Mundo do Trabalho' : 'Matérias do Técnico';
-  updateAstro(a); 
-}
-
-function openSelector(tipo) {
-  const list = document.getElementById('modal-list');
-  const title = document.getElementById('modal-title');
-  let data = [];
-  let tagInfo = "";
-
-  if (tipo === 'basicas') {
-      title.textContent = "Matérias Básicas";
-      data = BAS[currentYear];
-      tagInfo = `${currentYear}° Ano · Matéria Básica`;
-  } else {
-      title.textContent = currentYear === 1 ? "Mundo do Trabalho" : "Matérias do Técnico";
-      data = MAT[currentYear];
-      tagInfo = currentYear === 1 ? `1° Ano · Mundo do Trabalho` : `${currentYear}° Ano · Técnico`;
+function midiaHTML(m) {
+  if (m.tipo === 'img') {
+    return `<button class="media media-img" data-zoom="${esc(m.src)}" aria-label="Ampliar imagem"><img src="${esc(m.src)}" alt="${esc(m.alt || '')}" loading="lazy"></button>`;
   }
-  
-  list.innerHTML = data.map(([n, d]) => `
-      <div class="mat-card" onclick="openMateria('${n.replace(/'/g,"\\'")}','${d.replace(/'/g,"\\'")}','${tagInfo}')">
-          <div class="mat-card-title">${n}</div>
-          <div class="mat-card-arrow">Ver matéria →</div>
+  const ratio = m.ratio || (m.tipo === 'doc' ? '3/4' : '16/9');
+  return `<div class="media media-embed" style="aspect-ratio:${ratio}"><iframe loading="lazy" src="${esc(m.src)}" allowfullscreen allow="fullscreen; autoplay; encrypted-media; picture-in-picture" title="Material da atividade"></iframe></div>`;
+}
+
+function linkHTML(l) {
+  const icone = { video: '▶', github: '⌥' }[l.estilo] || '↗';
+  return `<a class="pill-link ${l.estilo ? 'pl-' + l.estilo : ''}" href="${esc(l.href)}" target="_blank" rel="noopener">${esc(l.label)} <span>${icone}</span></a>`;
+}
+
+function atividadeHTML(a, i) {
+  return `
+    <article class="activity" data-area="${esc(a.area || '')}" style="--i:${i}">
+      <div class="activity-media">${a.midia.map(midiaHTML).join('')}</div>
+      <div class="activity-info">
+        <div class="activity-meta">
+          <span class="activity-n">${pad(i + 1)}</span>
+          ${a.area ? `<span class="chip chip-area">${esc(a.area)}</span>` : ''}
+          ${a.tag ? `<span class="activity-tag">${esc(a.tag)}</span>` : ''}
+        </div>
+        <h3 class="activity-title">${esc(a.titulo)}</h3>
+        ${a.texto.map((p) => `<p class="activity-text">${esc(p)}</p>`).join('')}
+        ${a.links?.length ? `<div class="activity-links">${a.links.map(linkHTML).join('')}</div>` : ''}
+        ${a.codigo ? `
+          <details class="drawer">
+            <summary>Ver o código <span class="drawer-icon">+</span></summary>
+            <pre class="code"><code>${esc(a.codigo)}</code></pre>
+          </details>` : ''}
+        ${a.habilidades?.length ? `
+          <details class="drawer">
+            <summary>Conceitos e habilidades <span class="drawer-n">${a.habilidades.length}</span><span class="drawer-icon">+</span></summary>
+            <ul class="skills">${a.habilidades.map(([c, t]) => `<li><b>${esc(c)}</b><span>${esc(t)}</span></li>`).join('')}</ul>
+          </details>` : ''}
+        ${a.hashtags?.length ? `<div class="hashtags">${a.hashtags.map((h) => `<span>#${esc(h)}</span>`).join('')}</div>` : ''}
       </div>
-  `).join('');
-  
-  document.getElementById('modal-overlay').classList.add('active');
+    </article>`;
 }
 
-function closeSelector() { 
-  document.getElementById('modal-overlay').classList.remove('active'); 
+function renderSubject(trilha, id) {
+  const lista = PORTFOLIO[trilha];
+  const idx = lista ? lista.findIndex((m) => m.id === id) : -1;
+  if (idx < 0) return false;
+  const m = lista[idx];
+  const t = TRILHAS[trilha];
+  const areas = [...new Set(m.atividades.map((a) => a.area).filter(Boolean))];
+  const prev = lista[(idx - 1 + lista.length) % lista.length];
+  const next = lista[(idx + 1) % lista.length];
+
+  const view = $('#view-subject');
+  view.style.setProperty('--track', t.cor);
+  view.innerHTML = `
+    <section class="subject-hero">
+      <div class="crumbs">
+        <a href="#/" data-scroll="atividades">Atividades</a><span>/</span>
+        <a href="#/" data-scroll="${trilha}">${t.nome}</a><span>/</span>
+        <b>${esc(m.nome)}</b>
+      </div>
+      <div class="subject-switch" role="tablist" aria-label="${t.nome}">
+        ${lista.map((s) => `<a href="#/${trilha}/${s.id}" class="${s.id === id ? 'active' : ''}">${esc(s.nome)}</a>`).join('')}
+      </div>
+      <p class="eyebrow"><span class="eyebrow-line"></span>${t.curto} · 3° ano · ${pad(idx + 1)}/${pad(lista.length)}</p>
+      <h1 class="subject-title">${esc(m.nome)}</h1>
+      <div class="subject-sub">
+        <p>${esc(m.desc)}</p>
+        <span class="subject-count">${m.atividades.length ? plural(m.atividades.length, 'trabalho', 'trabalhos') : 'nenhum trabalho ainda'}</span>
+      </div>
+      ${areas.length > 1 ? `
+        <div class="filters" id="filters">
+          <span class="filters-label">Submatérias</span>
+          <button class="chip active" data-area="">Todas <i>${m.atividades.length}</i></button>
+          ${areas.map((a) => `<button class="chip" data-area="${esc(a)}">${esc(a)} <i>${m.atividades.filter((x) => x.area === a).length}</i></button>`).join('')}
+        </div>` : ''}
+    </section>
+
+    <section class="activities" id="activities">
+      ${m.atividades.length ? m.atividades.map(atividadeHTML).join('') : `
+        <div class="empty">
+          <div class="empty-icon">✦</div>
+          <p>Nenhum trabalho adicionado ainda para ${esc(m.nome)}.</p>
+          <small>Em breve</small>
+        </div>`}
+    </section>
+
+    <nav class="pager">
+      <a href="#/${trilha}/${prev.id}"><small>← Anterior</small><span>${esc(prev.nome)}</span></a>
+      <a href="#/${trilha}/${next.id}" class="pager-next"><small>Próxima →</small><span>${esc(next.nome)}</span></a>
+    </nav>`;
+
+  document.title = `${m.nome} · Lorenzo Kurrle Borges`;
+  return true;
 }
 
-function openMateria(nome, desc, tag) {
-  closeSelector();
-  document.getElementById('mp-title').textContent = nome;
-  document.getElementById('mp-sub').textContent = desc;
-  document.getElementById('mp-tag').textContent = tag;
+// ---------------------------------------------------------------- rotas
 
-  // --- MUDANÇA AQUI: LÓGICA DE MOSTRAR O TRABALHO CERTO ---
-  const container = document.getElementById('activities-container');
-  const chave = `${currentYear}-${nome}`; // Cria a chave "3-Matemática III"
+let primeiraRota = true;
 
-  if (TRABALHOS[chave]) {
-      // Se achar o trabalho, joga ele na tela
-      container.innerHTML = TRABALHOS[chave];
-  } else {
-      // Se não tiver trabalho pra essa matéria, mostra o aviso
-      container.innerHTML = `
-          <div class="placeholder" style="padding: 40px;">
-              Nenhum trabalho adicionado ainda para ${nome}.
-              <small style="display:block; margin-top:4px; font-size:11px;">Em breve você poderá adicionar seus projetos aqui.</small>
-          </div>
-      `;
+function route() {
+  const [, trilha, id] = (location.hash.replace(/^#\/?/, '/')).split('/');
+  const home = $('#view-home');
+  const subject = $('#view-subject');
+  const abrirMateria = trilha && id && renderSubject(trilha, id);
+
+  home.hidden = !!abrirMateria;
+  subject.hidden = !abrirMateria;
+  if (!abrirMateria) document.title = 'Lorenzo Kurrle Borges · Portfólio';
+  // No celular, deixa a aba da matéria atual visível na barra de matérias
+  const ativa = abrirMateria && subject.querySelector('.subject-switch .active');
+  if (ativa) ativa.parentElement.scrollLeft = ativa.offsetLeft - 16;
+
+  if (!primeiraRota) {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    const alvo = pendingScroll;
+    pendingScroll = null;
+    if (alvo && !abrirMateria) requestAnimationFrame(() => scrollToId(alvo, 'instant'));
+    // Os cursores constroem cada nova página de matéria
+    if (abrirMateria && window.Banna) {
+      document.querySelectorAll('.nav, .footer').forEach((el) => el.setAttribute('data-banna-skip', ''));
+      window.Banna.start();
+    }
   }
-  // --------------------------------------------------------
-
-  document.getElementById('page-home').classList.replace('visible','hidden');
-  document.getElementById('page-materia').classList.replace('hidden','visible');
-  document.getElementById('pf').scrollTop = 0;
+  primeiraRota = false;
 }
 
-function goHome() {
-  document.getElementById('page-materia').classList.replace('visible','hidden');
-  document.getElementById('page-home').classList.replace('hidden','visible');
+let pendingScroll = null;
+
+function scrollToId(id, behavior = 'smooth') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const y = id === 'topo' ? 0 : el.getBoundingClientRect().top + scrollY - 90;
+  window.scrollTo({ top: y, behavior });
 }
 
-function toggleSb() {
-  document.getElementById('sb').classList.toggle('open');
-  document.getElementById('ov').classList.toggle('open');
-}
-
-function goTo(id) {
-  goHome();
-  
-  setTimeout(() => {
-    const elemento = document.getElementById(id);
-    if(elemento) {
-      elemento.scrollIntoView({behavior:'smooth'});
-    }
-  }, 100);
-}
-
-// estrelas
-const sc = document.getElementById('stars');
-for(let i = 0; i < 80; i++){
-  const s = document.createElement('div');
-  s.className = 'star';
-  const sz = Math.random() * 2.5 + 0.8;
-  const dx = (Math.random() - 0.5) * 12;
-  const dy = (Math.random() - 0.5) * 12;
-  s.style.cssText = `
-    width:${sz}px; height:${sz}px;
-    top:${Math.random()*100}%; left:${Math.random()*100}%;
-    --td:${1.5+Math.random()*2.5}s;
-    --md:${6+Math.random()*8}s;
-    --dx:${dx}px; --dy:${dy}px;
-    animation-delay:${Math.random()*5}s, ${Math.random()*5}s;
-    box-shadow: 0 0 ${sz*3}px rgba(200,200,255,0.9);
-  `;
-  sc.appendChild(s);
-}
-
-// ── Astros ──
-const angles = [0,45,90,135,180,225,270,315];
-
-function makeStar(id) {
-    const el = document.createElement('div');
-    el.className = 'astro astro-star'; el.id = id;
-    const inner = document.createElement('div'); inner.className = 'astro-inner';
-    const core = document.createElement('div'); core.className = 'star-core';
-    inner.appendChild(core);
-    angles.forEach(a => {
-        const ray = document.createElement('div'); ray.className = 'ray';
-        ray.style.cssText = `transform: translateX(-50%) translateY(-100%) rotate(${a}deg); transform-origin: 50% 100%; animation-delay: ${a/360}s`;
-        inner.appendChild(ray);
-    });
-    el.appendChild(inner);
-    return el;
-}
-
-function makeMoon(id) {
-    const el = document.createElement('div');
-    el.className = 'astro astro-moon'; el.id = id;
-    el.innerHTML = '<div class="astro-inner"><div class="moon-shape"></div><div class="moon-glow"></div></div>';
-    return el;
-}
-
-function makeBlackhole(id) {
-    const el = document.createElement('div');
-    el.className = 'astro astro-blackhole'; el.id = id;
-    el.innerHTML = '<div class="astro-inner"><div class="bh-distortion"></div><div class="bh-ring"></div><div class="bh-core"></div></div>';
-    return el;
-}
-
-function createAstros() {
-    const pf = document.getElementById('pf');
-
-    // Principal — direita
-    pf.appendChild(makeStar('astro-star'));
-    pf.appendChild(makeMoon('astro-moon'));
-    pf.appendChild(makeBlackhole('astro-blackhole'));
-
-    // Secundário A — canto superior esquerdo
-    pf.appendChild(makeStar('astro-star-a'));
-    pf.appendChild(makeMoon('astro-moon-a'));
-    pf.appendChild(makeBlackhole('astro-blackhole-a'));
-
-    // Secundário B — canto inferior direito
-    pf.appendChild(makeStar('astro-star-b'));
-    pf.appendChild(makeMoon('astro-moon-b'));
-    pf.appendChild(makeBlackhole('astro-blackhole-b'));
-}
-
-function randomPos() {
-    // Evita o centro (30%-70%) para não sobrepor o conteúdo
-    const zones = [
-        { top: [5, 20],  left: [3, 25]  },  // canto superior esquerdo
-        { top: [5, 20],  left: [75, 95] },  // canto superior direito
-        { top: [65, 85], left: [3, 25]  },  // canto inferior esquerdo
-        { top: [65, 85], left: [75, 95] },  // canto inferior direito
-        { top: [5, 20],  left: [35, 60] },  // topo centro
-    ];
-    const z = zones[Math.floor(Math.random() * zones.length)];
-    const top  = z.top[0]  + Math.random() * (z.top[1]  - z.top[0]);
-    const left = z.left[0] + Math.random() * (z.left[1] - z.left[0]);
-    return { top: top + '%', left: left + '%', right: 'auto' };
-}
-
-function updateAstro(ano) {
-    const allIds = [
-        'astro-star','astro-moon','astro-blackhole',
-        'astro-star-a','astro-moon-a','astro-blackhole-a',
-        'astro-star-b','astro-moon-b','astro-blackhole-b'
-    ];
-    allIds.forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.classList.remove('visible');
-    });
-
-    const map = {
-        1: ['astro-star',      'astro-star-a',      'astro-star-b'],
-        2: ['astro-moon',      'astro-moon-a',      'astro-moon-b'],
-        3: ['astro-blackhole', 'astro-blackhole-a', 'astro-blackhole-b']
-    };
-
-    // Sorteia 3 zonas diferentes para os 3 astros
-    const usedZones = [];
-    map[ano].forEach(id => {
-        const el = document.getElementById(id);
-        if(!el) return;
-        let pos;
-        do { pos = randomPos(); } while(usedZones.includes(pos.left));
-        usedZones.push(pos.left);
-        el.style.top   = pos.top;
-        el.style.left  = pos.left;
-        el.style.right = 'auto';
-        setTimeout(() => el.classList.add('visible'), 80);
-    });
-}
-
-
-// ── Estrelas cadentes ──
-function launchShootingStar() {
-  const container = document.getElementById('pf');
-  const W = container.offsetWidth;
-  const H = container.offsetHeight;
-
-  // Nasce no topo ou canto superior esquerdo
-  const fromTop = Math.random() > 0.4;
-  const startX  = fromTop ? Math.random() * W * 1.2 : Math.random() * W * 0.2;
-  const startY  = fromTop ? Math.random() * H * 0.2 : Math.random() * H * 0.4;
-
-  // Diagonal suave para baixo-direita
-  const angle = 25 + Math.random() * 20;
-  const dist  = 250 + Math.random() * 200;
-  const rad   = (angle * Math.PI) / 180;
-  const tx    = Math.cos(rad) * dist;
-  const ty    = Math.sin(rad) * dist;
-  const tail  = 80 + Math.random() * 100;
-  const dur   = 0.8 + Math.random() * 0.6;
-
-  const star = document.createElement('div');
-  star.className = 'shooting-star';
-  star.style.cssText = `
-    left: ${startX}px;
-    top:  ${startY}px;
-    --tx: ${tx}px;
-    --ty: ${ty}px;
-    --angle: ${angle}deg;
-    --tail: ${tail}px;
-    --dur: ${dur}s;
-  `;
-
-  container.appendChild(star);
-  star.addEventListener('animationend', () => star.remove());
-
-  // Próxima: entre 3s e 5s
-  setTimeout(launchShootingStar, 3000 + Math.random() * 2000);
-}
-
-// Primeiro disparo após 2s
-setTimeout(launchShootingStar, 2000);
-
-
-function toggleSkills(btn) {
-    const content = btn.nextElementSibling;
-    content.classList.toggle('active');
-    
-    // Gira a setinha se você colocar uma, ou muda o texto
-    if (content.classList.contains('active')) {
-        btn.style.borderColor = "#7B7FD4";
-        btn.querySelector('.arrow-icon').style.transform = "rotate(180deg)";
+// Links com data-scroll: rolam até a seção (voltando ao início se precisar)
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('[data-scroll]');
+  if (link) {
+    e.preventDefault();
+    closeMenu();
+    const alvo = link.dataset.scroll;
+    if ($('#view-home').hidden) {
+      pendingScroll = alvo;
+      location.hash = '#/';
     } else {
-        btn.style.borderColor = "rgba(123, 127, 212, 0.2)";
-        btn.querySelector('.arrow-icon').style.transform = "rotate(0deg)";
+      scrollToId(alvo);
     }
+    return;
+  }
+
+  const chip = e.target.closest('#filters .chip');
+  if (chip) {
+    document.querySelectorAll('#filters .chip').forEach((c) => c.classList.toggle('active', c === chip));
+    const area = chip.dataset.area;
+    let n = 0;
+    document.querySelectorAll('#activities .activity').forEach((a) => {
+      const show = !area || a.dataset.area === area;
+      a.hidden = !show;
+      if (show) a.querySelector('.activity-n').textContent = pad(++n);
+    });
+    return;
+  }
+
+  const zoom = e.target.closest('[data-zoom]');
+  if (zoom) {
+    const box = $('#lightbox');
+    box.querySelector('img').src = zoom.dataset.zoom;
+    box.hidden = false;
+    requestAnimationFrame(() => box.classList.add('open'));
+    return;
+  }
+
+  if (e.target.closest('#lightbox')) closeLightbox();
+});
+
+function closeLightbox() {
+  const box = $('#lightbox');
+  box.classList.remove('open');
+  setTimeout(() => { box.hidden = true; }, 250);
 }
-// Carrega os dados das disciplinas e só então inicia a interface
-carregarDados()
-  .then(() => {
-    createAstros();
-    setAno(1);
-  })
-  .catch(err => {
-    console.error('Erro ao carregar os dados das disciplinas:', err);
-    createAstros();
-    setAno(1);
-  });
+addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeLightbox(); closeMenu(); } });
 
+// ---------------------------------------------------------------- menu (celular)
 
-  // Inicializa a interface
+const menuBtn = $('#nav-menu');
+function closeMenu() {
+  document.body.classList.remove('menu-open');
+  menuBtn.setAttribute('aria-expanded', 'false');
+}
+menuBtn.addEventListener('click', () => {
+  const open = document.body.classList.toggle('menu-open');
+  menuBtn.setAttribute('aria-expanded', String(open));
+});
 
-createAstros();
-setAno(1);
+// ---------------------------------------------------------------- efeitos
+
+// Holofote que segue o mouse nos cartões
+document.addEventListener('pointermove', (e) => {
+  const card = e.target.closest?.('.subject-card, .feature, .activity');
+  if (!card) return;
+  const r = card.getBoundingClientRect();
+  card.style.setProperty('--mx', `${e.clientX - r.left}px`);
+  card.style.setProperty('--my', `${e.clientY - r.top}px`);
+}, { passive: true });
+
+// Barra de navegação fica sólida ao rolar
+const nav = $('#nav');
+const onScroll = () => nav.classList.toggle('scrolled', scrollY > 24);
+addEventListener('scroll', onScroll, { passive: true });
+onScroll();
+
+// Fundo reage levemente ao mouse
+if (matchMedia('(pointer: fine)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  const fx = $('.bg-fx');
+  addEventListener('pointermove', (e) => {
+    const x = (e.clientX / innerWidth - 0.5) * 30;
+    const y = (e.clientY / innerHeight - 0.5) * 30;
+    fx.style.setProperty('--px', `${x}px`);
+    fx.style.setProperty('--py', `${y}px`);
+  }, { passive: true });
+}
+
+// ---------------------------------------------------------------- início
+
+renderHome();
+route();
+addEventListener('hashchange', route);

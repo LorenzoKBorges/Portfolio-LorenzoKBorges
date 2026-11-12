@@ -3,125 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portfolio - Lorenzo Kurrle Borges</title>
+    <title>Lorenzo Kurrle Borges · Portfólio</title>
+    <meta name="description" content="Portfólio do 3° ano do Técnico em Desenvolvimento de Sistemas: matérias básicas e técnicas, projetos e atividades.">
+    <meta name="theme-color" content="#161920">
+
+    <!-- Banna: uma equipe de cursores constrói a página na frente do visitante.
+         Precisa ficar no <head>, sem defer/async. -->
+    <script src="banna.js"
+        data-speed="1.35"
+        data-agents="9"
+        data-max-wait="5"
+        data-colors="#D7422C,#E2C9AB,#E5E5E5,#F06A4F,#C9A27E,#B8343F"
+        data-exclude=".marquee, .hero-cursors, .bg-fx, .modal"
+        data-label-agents="construtores"
+        data-label-layers="camadas"
+        data-label-skip="Mostrar tudo"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="pf" id="pf">
-        <div class="stars" id="stars"></div>
-        <div class="nebula nebula1"></div>
-        <div class="nebula nebula2"></div>
+    <!-- Fundo animado -->
+    <div class="bg-fx" aria-hidden="true">
+        <div class="bg-grid"></div>
+        <div class="blob blob-a"></div>
+        <div class="blob blob-b"></div>
+        <div class="blob blob-c"></div>
+        <div class="noise"></div>
+    </div>
 
-        <nav class="navbar">
-            <div class="nav-left">
-                <div class="hamburger" onclick="toggleSb()"><span></span><span></span><span></span></div>
-                <span class="nav-name">Lorenzo Kurrle Borges</span>
-            </div>
-            <div class="ano-tabs">
-                <button class="ano-tab active" id="t1" onclick="setAno(1)">1° ano</button>
-                <button class="ano-tab" id="t2" onclick="setAno(2)">2° ano</button>
-                <button class="ano-tab" id="t3" onclick="setAno(3)">3° ano</button>
-            </div>
+    <header class="nav" id="nav">
+        <a class="nav-logo" href="#/" aria-label="Início">
+            <span class="nav-logo-mark">LKB</span>
+            <span class="nav-logo-dot"></span>
+        </a>
+        <nav class="nav-links" id="nav-links">
+            <a href="#/" data-scroll="atividades">Atividades</a>
+            <a href="#/" data-scroll="basicas">Básicas</a>
+            <a href="#/" data-scroll="tecnicas">Técnico</a>
+            <a href="#/" data-scroll="sobre">Sobre</a>
+            <a href="#/" data-scroll="certificados">Certificados</a>
         </nav>
+        <div class="nav-badge"><span class="pulse"></span>3° ano</div>
+        <button class="nav-menu" id="nav-menu" aria-label="Abrir menu" aria-expanded="false"><span></span><span></span></button>
+    </header>
 
-        <div class="overlay-sidebar" id="ov" onclick="toggleSb()"></div>
-        <div class="sidebar" id="sb">
-            <button class="sb-item" onclick="setAno(1);toggleSb()">1° Ano</button>
-            <button class="sb-item" onclick="setAno(2);toggleSb()">2° Ano</button>
-            <button class="sb-item" onclick="setAno(3);toggleSb()">3° Ano</button>
-            <button class="sb-item" onclick="goTo('sobre');toggleSb()">Sobre mim</button>
+    <!-- ======================= INÍCIO ======================= -->
+    <main id="view-home" class="view">
+
+        <section class="hero" id="topo">
+            <div class="hero-cursors" aria-hidden="true">
+                <div class="mp-cursor mp-1" style="--c:#D7422C;--t:#E5E5E5"><svg viewBox="0 0 20 22"><path d="M2 2l15 8-6.5 2L8 19z"/></svg><span>técnico</span></div>
+                <div class="mp-cursor mp-2" style="--c:#E2C9AB;--t:#161920"><svg viewBox="0 0 20 22"><path d="M2 2l15 8-6.5 2L8 19z"/></svg><span>básicas</span></div>
+                <div class="mp-cursor mp-3" style="--c:#E5E5E5;--t:#161920"><svg viewBox="0 0 20 22"><path d="M2 2l15 8-6.5 2L8 19z"/></svg><span>lorenzo</span></div>
+                <div class="mp-cursor mp-4" style="--c:#B8343F;--t:#E5E5E5"><svg viewBox="0 0 20 22"><path d="M2 2l15 8-6.5 2L8 19z"/></svg><span>projetos</span></div>
+            </div>
+
+            <div class="hero-stage">
+                <p class="eyebrow hero-eyebrow"><span class="eyebrow-line"></span>Portfólio · 3° ano · Desenvolvimento de Sistemas<span class="eyebrow-line"></span></p>
+                <h1 class="hero-title">
+                    <span class="ht-row">Lorenzo</span>
+                    <span class="ht-row ht-small">Kurrle <em class="ht-outline">Borges</em></span>
+                </h1>
+                <div class="hero-disc" aria-hidden="true"></div>
+                <img class="hero-photo" src="imagens/lorenzo.webp" alt="Foto de Lorenzo Kurrle Borges" width="1202" height="1309" fetchpriority="high">
+
+                <p class="hero-sub">Registro das disciplinas, projetos e aprendizados do <strong>3° ano</strong> do ensino médio técnico, separados entre a base comum e o técnico.</p>
+                <div class="hero-cta">
+                    <a class="btn btn-solid" href="#/" data-scroll="atividades">Explorar atividades <span class="btn-arrow">↘</span></a>
+                    <a class="btn btn-ghost" href="#/" data-scroll="sobre">Sobre mim</a>
+                </div>
+            </div>
+            <dl class="hero-stats" id="hero-stats"></dl>
+        </section>
+
+        <div class="marquee" aria-hidden="true">
+            <div class="marquee-track" id="marquee"></div>
         </div>
 
-        <div class="page visible" id="page-home">
+        <section class="section" id="atividades">
+            <div class="section-head">
+                <span class="section-index">01</span>
+                <h2 class="section-title">Atividades</h2>
+                <p class="section-lead">Escolha uma trilha e depois a matéria. Cada matéria reúne os trabalhos, as habilidades trabalhadas e os links originais.</p>
+            </div>
 
-<div class="cover" id="cover">
-    <div class="cover-info">
-        <div class="cover-eyebrow">Curso Técnico · Desenvolvimento de Sistemas</div>
-        <h1 class="hero-title">Lorenzo Kurrle<br><span>Borges</span></h1>
-        <p class="hero-sub">Registro de disciplinas, projetos e aprendizados no ensino médio técnico.</p>
-        
-    </div>
-
-    <div class="cover-photos-wrapper">
-                      <iframe 
-                          src="https://docs.google.com/document/d/1Cd7_kBqVWU8MS1fSEFYrjaXvsQhIhis5h38qhQ73VfU/preview" 
-                          width="100%" 
-                          height="500px" 
-                          allow="autoplay">
-                      </iframe>
-    </div>
-</div>
-
-            <div id="main-content">
-<div class="content-section" id="atividades">
-                    <h2>Atividades</h2>
-                    <p style="margin-bottom: 30px;">Selecione o ano letivo para explorar as disciplinas e projetos.</p>
-                    
-                    <div class="page-ano-tabs">
-                        <button class="page-ano-tab active" id="pt1" onclick="setAno(1)">1° ano</button>
-                        <button class="page-ano-tab" id="pt2" onclick="setAno(2)">2° ano</button>
-                        <button class="page-ano-tab" id="pt3" onclick="setAno(3)">3° ano</button>
+            <div class="track" id="basicas" style="--track: var(--bas)">
+                <div class="track-head">
+                    <div>
+                        <span class="track-kicker">Trilha A · Base comum</span>
+                        <h3 class="track-title">Matérias básicas</h3>
                     </div>
+                    <span class="track-count" id="count-basicas"></span>
+                </div>
+                <div class="subject-grid" id="grid-basicas"></div>
+            </div>
 
-                    <div class="two-blocks">
-                        <div class="block" onclick="openSelector('basicas')">
-                            <div style="color:#C8C8FF; font-weight:600">Matérias Básicas</div>
-                        </div>
-                        <div class="block" onclick="openSelector('tecnico')">
-                            <div id="tec-title" style="color:#C8C8FF; font-weight:600">Matérias do Técnico</div>
-                        </div>
+            <div class="track" id="tecnicas" style="--track: var(--tec)">
+                <div class="track-head">
+                    <div>
+                        <span class="track-kicker">Trilha B · Desenvolvimento de Sistemas</span>
+                        <h3 class="track-title">Matérias técnicas</h3>
                     </div>
+                    <span class="track-count" id="count-tecnicas"></span>
                 </div>
+                <div class="subject-grid" id="grid-tecnicas"></div>
+            </div>
+        </section>
 
-                <div class="content-section" id="about">
-                    <h2>Sobre Mim</h2>
-                    <p>Sou uma pessoa movida pela vontade de aprender e crescer dentro dos meus próprios princípios. Valorizo o tempo e a responsabilidade. Tenho o desejo sincero de deixar uma marca positiva, de ser lembrado como alguém que, de alguma forma, ensinou algo ao mundo.
-                        <br><br> Gosto mais de exercícios racionais do que físicos. Sou apaixonado por jogos que desafiam a mente, como Xadrez e Coup, e cartas no geral e também encontro equilíbrio em esportes como vôlei e natação.</p>
+        <section class="section" id="destaques">
+            <div class="section-head">
+                <span class="section-index">02</span>
+                <h2 class="section-title">Em destaque</h2>
+                <p class="section-lead">Projetos que cruzam várias matérias do técnico.</p>
+            </div>
+            <div class="feature-row" id="feature-row"></div>
+        </section>
+
+        <section class="section" id="sobre">
+            <div class="section-head">
+                <span class="section-index">03</span>
+                <h2 class="section-title">Sobre mim</h2>
+            </div>
+            <div class="about">
+                <div class="about-text">
+                    <p class="about-big">Sou uma pessoa movida pela vontade de aprender e crescer dentro dos meus próprios princípios.</p>
+                    <p>Valorizo o tempo e a responsabilidade. Tenho o desejo sincero de deixar uma marca positiva, de ser lembrado como alguém que, de alguma forma, ensinou algo ao mundo.</p>
+                    <p>Gosto mais de exercícios racionais do que físicos. Sou apaixonado por jogos que desafiam a mente, como Xadrez, Coup e cartas no geral, e também encontro equilíbrio em esportes como vôlei e natação.</p>
+                    <ul class="about-tags">
+                        <li>Xadrez</li><li>Coup</li><li>Jogos de cartas</li><li>Vôlei</li><li>Natação</li>
+                    </ul>
                 </div>
-
-                <div class="content-section" id="certificados">
-                    <h2>Certificados</h2>
-                    <p>Conquistas, cursos e especializações acadêmicas.</p>
-                    
-                    <div class="cert-grid">
-                        <div class="cert-placeholder">
-                            <p>Esta seção está sendo preparada para exibir meus certificados.(ainda quero completar)</p>
+                <div class="about-doc">
+                    <div class="frame">
+                        <div class="frame-bar"><i></i><i></i><i></i><span>apresentação.doc</span></div>
+                        <div class="frame-body" style="aspect-ratio: 3/4">
+                            <iframe loading="lazy" src="https://docs.google.com/document/d/1Cd7_kBqVWU8MS1fSEFYrjaXvsQhIhis5h38qhQ73VfU/preview" title="Documento de apresentação"></iframe>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        
-
-        <div class="page hidden" id="page-materia">
-            <div style="padding: 40px; padding-top: 80px;">
-                <button class="back-btn" onclick="goHome()">← Voltar</button>
-                <div id="mp-tag" style="font-size: 11px; font-weight: 500; color: #5A5A99; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px;"></div>
-                <h1 id="mp-title" style="color: white; font-family:Syne;"></h1>
-                <p id="mp-sub" style="color: #5A5A99; margin-top: 10px;"></p>
-                <div style="height: 0.5px; background: rgba(123,127,212,0.12); margin: 28px 0;"></div>
-                <div style="font-size: 11px; font-weight: 500; color: #3D3D6B; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 16px;">Trabalhos & projetos</div>
-                
-                <div id="activities-container"></div>
-                
+        <section class="section" id="certificados">
+            <div class="section-head">
+                <span class="section-index">04</span>
+                <h2 class="section-title">Certificados</h2>
+                <p class="section-lead">Conquistas, cursos e especializações acadêmicas.</p>
             </div>
-        </div>
-
-        <div class="modal-overlay" id="modal-overlay" onclick="closeSelector()">
-            <div class="modal-content" onclick="event.stopPropagation()">
-                <div class="modal-header">
-                    <h2 id="modal-title" class="modal-title">Matérias</h2>
-                    <button class="close-modal" onclick="closeSelector()">✕</button>
-                </div>
-                <div id="modal-list" class="modal-list">
-                </div>
+            <div class="empty">
+                <div class="empty-icon">✦</div>
+                <p>Esta seção está sendo preparada para exibir meus certificados.</p>
+                <small>Em breve</small>
             </div>
+        </section>
+    </main>
+
+    <!-- ======================= MATÉRIA ======================= -->
+    <main id="view-subject" class="view" hidden></main>
+
+    <footer class="footer">
+        <div class="footer-big">Lorenzo<br>Kurrle Borges</div>
+        <div class="footer-row">
+            <span>Portfólio · 3° ano · Desenvolvimento de Sistemas</span>
+            <a href="#/" data-scroll="topo">Voltar ao topo ↑</a>
         </div>
+    </footer>
+
+    <!-- Visualizador de imagens -->
+    <div class="modal" id="lightbox" hidden>
+        <button class="modal-close" aria-label="Fechar">✕</button>
+        <img alt="">
     </div>
-    
-    <script src="data/1ano.js"></script>
-    <script src="data/2ano.js"></script>
+
     <script src="data/3ano.js"></script>
     <script src="script.js"></script>
 </body>

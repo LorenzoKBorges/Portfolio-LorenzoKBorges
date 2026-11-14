@@ -4,7 +4,7 @@
 
 const TRILHAS = {
   basicas: { nome: 'Matérias básicas', curto: 'Básica', cor: 'var(--bas)' },
-  tecnicas: { nome: 'Matérias técnicas', curto: 'Técnico', cor: 'var(--tec)' }
+  tecnicas: { nome: 'Matérias técnicas', curto: 'Técnico', cor: 'var(--tec)', corTexto: 'var(--tec-ink)', corSobre: 'var(--tec-on)' }
 };
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -134,6 +134,8 @@ function renderSubject(trilha, id) {
 
   const view = $('#view-subject');
   view.style.setProperty('--track', t.cor);
+  view.style.setProperty('--track-ink', t.corTexto || t.cor);
+  view.style.setProperty('--on-track', t.corSobre || 'var(--ink)');
   view.innerHTML = `
     <section class="subject-hero">
       <div class="crumbs">
@@ -405,7 +407,7 @@ function initIntro() {
   const intro = $('#intro');
   if (!HTML.classList.contains('intro')) { intro.remove(); return; }
 
-  const cores = ['#AE40BF', '#E2C9AB', '#E5E5E5', '#BE66CC', '#C9A27E', '#7E2A8C'];
+  const cores = ['#762B82', '#E2C9AB', '#E5E5E5', '#9236A1', '#C9A27E', '#5E2269'];
   const N = 9; // mesmo número de cursores do modo completo
   const orbit = $('#intro-orbit');
   const anel = intro.querySelector('.intro-ring');

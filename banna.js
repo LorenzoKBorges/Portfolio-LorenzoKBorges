@@ -1,5 +1,6 @@
 /*!
  * banna by Mohammadreza Rokhbin, https://rokhbin.ir
+ * (cópia modificada para este portfólio: Banna.start(opções) e Banna.busy())
  * A crew of cursors builds your page in front of the visitor.
  * One file, no dependencies. Add it to <head>:
  *   <script src="banna.js"></script>
@@ -548,14 +549,20 @@
     addEventListener('keydown', onKey)
     document.addEventListener('focusin', onFocus)
 
-    current = { stop, skip }
+    current = { stop, skip, busy: () => tasks.some((t) => t.state === 'queued' || t.state === 'active') }
     wake()
   }
 
   window.Banna = {
-    start() {
+    // Opções por chamada, por exemplo { agents: 3, speed: 1.8, maxWait: 3 }
+    start(overrides) {
       if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
+      if (overrides) Object.assign(options, overrides)
       start()
+    },
+    // true enquanto algum elemento está na fila ou sendo construído
+    busy() {
+      return !!current && current.busy()
     },
     skip() {
       if (current) current.skip()

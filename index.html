@@ -12,7 +12,7 @@
          (veja a tela de abertura em script.js). -->
     <script src="banna.js"
         data-auto="false"
-        data-speed="0.75"
+        data-speed="1"
         data-agents="9"
         data-max-wait="10"
         data-colors="#D7422C,#E2C9AB,#E5E5E5,#F06A4F,#C9A27E,#B8343F"
@@ -21,11 +21,16 @@
         data-label-layers="camadas"
         data-label-skip="Mostrar tudo"></script>
     <script>
-        // Tela de abertura: esconde o site até o visitante "entrar".
-        // Quem pediu menos movimento no sistema, ou usa ?nobanna, vê o site direto.
+        // Tela de abertura: esconde o site até o visitante escolher o modo e "entrar".
+        // Quem pediu menos movimento no sistema, ou usa ?nobanna, vê o site direto (modo leve).
+        // O modo escolhido antes fica salvo, para o fundo já carregar certo.
         (function () {
+            var html = document.documentElement;
             var semAnimacao = matchMedia('(prefers-reduced-motion: reduce)').matches || /[?&]nobanna/.test(location.search);
-            if (!semAnimacao) document.documentElement.classList.add('intro');
+            var salvo = null;
+            try { salvo = localStorage.getItem('lkb-modo'); } catch (e) {}
+            if (semAnimacao || salvo === 'leve') html.classList.add('lite');
+            if (!semAnimacao) html.classList.add('intro');
         })();
     </script>
 
@@ -44,20 +49,36 @@
         <div class="noise"></div>
     </div>
 
-    <!-- Tela de abertura: cursores girando até o visitante entrar -->
-    <button class="intro-screen" id="intro" type="button" data-banna-skip aria-label="Entrar no portfólio">
-        <span class="intro-orbit" id="intro-orbit" aria-hidden="true"></span>
-        <span class="intro-ring" aria-hidden="true"></span>
-        <span class="intro-top">
+    <!-- Tela de abertura: cursores girando enquanto o visitante escolhe o modo -->
+    <div class="intro-screen" id="intro" data-banna-skip role="dialog" aria-modal="true" aria-labelledby="intro-q">
+        <div class="intro-orbit" id="intro-orbit" aria-hidden="true"></div>
+        <div class="intro-ring" aria-hidden="true"></div>
+        <div class="intro-top">
             <span class="intro-logo">LKB<i></i></span>
             <span class="intro-name">Lorenzo Kurrle Borges · Portfólio 3° ano</span>
-        </span>
-        <span class="intro-hint">
-            <span class="intro-hint-desk">Clique ou aperte <kbd>Enter</kbd> / <kbd>Espaço</kbd> para construir</span>
-            <span class="intro-hint-touch">Toque na tela para construir</span>
-            <span class="intro-sub">9 cursores esperando você</span>
-        </span>
-    </button>
+        </div>
+        <div class="intro-panel">
+            <p class="intro-q" id="intro-q">Como você quer ver o site?</p>
+            <div class="intro-choices" role="radiogroup" aria-labelledby="intro-q">
+                <button class="mode-btn" type="button" role="radio" data-modo="completo">
+                    <span class="mode-k">01</span>
+                    <span class="mode-t">Experiência completa</span>
+                    <span class="mode-d">Todos os efeitos, com a página construída pelos cursores</span>
+                    <span class="mode-flag">Sugerido para este aparelho</span>
+                </button>
+                <button class="mode-btn" type="button" role="radio" data-modo="leve">
+                    <span class="mode-k">02</span>
+                    <span class="mode-t">Modo leve</span>
+                    <span class="mode-d">Menos animação, para celulares mais simples ou internet lenta</span>
+                    <span class="mode-flag">Sugerido para este aparelho</span>
+                </button>
+            </div>
+            <p class="intro-sub">
+                <span class="intro-hint-desk"><kbd>Enter</kbd> entra · <kbd>←</kbd> <kbd>→</kbd> trocam · dá para mudar depois no menu</span>
+                <span class="intro-hint-touch">Toque numa opção · dá para mudar depois no menu</span>
+            </p>
+        </div>
+    </div>
 
     <header class="nav" id="nav">
         <a class="nav-logo" href="#/" aria-label="Início">
@@ -70,6 +91,9 @@
             <a href="#/" data-scroll="tecnicas">Técnico</a>
             <a href="#/" data-scroll="sobre">Sobre</a>
             <a href="#/" data-scroll="certificados">Certificados</a>
+            <button class="nav-mode" id="nav-mode" type="button" title="Trocar entre experiência completa e modo leve">
+                <span class="nav-mode-dot"></span><span id="nav-mode-label">Modo completo</span>
+            </button>
         </nav>
         <div class="nav-badge"><span class="pulse"></span>3° ano</div>
         <button class="nav-menu" id="nav-menu" aria-label="Abrir menu" aria-expanded="false"><span></span><span></span></button>
@@ -90,7 +114,7 @@
                 <p class="eyebrow hero-eyebrow"><span class="eyebrow-line"></span>Portfólio · 3° ano · Desenvolvimento de Sistemas<span class="eyebrow-line"></span></p>
                 <h1 class="hero-title">
                     <span class="ht-row">Lorenzo</span>
-                    <span class="ht-row ht-small">Kurrle <em class="ht-outline">Borges</em></span>
+                    <span class="ht-row ht-small"><span class="ht-word">Kurrle</span> <em class="ht-outline">Borges</em></span>
                 </h1>
                 <div class="hero-disc" aria-hidden="true"></div>
                 <img class="hero-photo" src="imagens/lorenzo.webp" alt="Foto de Lorenzo Kurrle Borges" width="1202" height="1309" fetchpriority="high">
@@ -199,7 +223,7 @@
 
     <!-- Aviso de rolagem automática -->
     <div class="autoscroll-pill" id="autoscroll-pill" data-banna-skip aria-hidden="true">
-        <span class="as-dot"></span>Descendo sozinho · mexa o mouse ou toque para parar
+        <span class="as-dot"></span>Modo apresentação · mexa o mouse ou toque para parar
     </div>
 
     <!-- Visualizador de imagens -->

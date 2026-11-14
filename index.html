@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lorenzo Kurrle Borges · Portfólio</title>
     <meta name="description" content="Portfólio do 3° ano do Técnico em Desenvolvimento de Sistemas: matérias básicas e técnicas, projetos e atividades.">
-    <meta name="theme-color" content="#161920">
+    <meta name="theme-color" content="#0B0C12">
 
     <!-- Banna: uma equipe de cursores constrói a página na frente do visitante.
          data-auto="false": só começa quando o visitante clica / aperta Enter ou Espaço
@@ -40,36 +40,35 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Fundo animado -->
+    <!-- Fundo: campo de estrelas (desenhado em script.js) -->
     <div class="bg-fx" aria-hidden="true">
-        <div class="bg-grid"></div>
-        <div class="blob blob-a"></div>
-        <div class="blob blob-b"></div>
-        <div class="blob blob-c"></div>
-        <div class="noise"></div>
+        <canvas class="stars" id="stars"></canvas>
+        <div class="twinkles" id="twinkles"></div>
     </div>
 
     <!-- Tela de abertura: cursores girando enquanto o visitante escolhe o modo -->
     <div class="intro-screen" id="intro" data-banna-skip role="dialog" aria-modal="true" aria-labelledby="intro-q">
+        <!-- O buraco negro nasce aqui e, depois da entrada, vai para trás da foto no topo -->
+        <canvas class="bh-canvas" id="bh" aria-hidden="true"></canvas>
         <div class="intro-orbit" id="intro-orbit" aria-hidden="true"></div>
-        <div class="intro-ring" aria-hidden="true"></div>
         <div class="intro-top">
             <span class="intro-logo">LKB<i></i></span>
             <span class="intro-name">Lorenzo Kurrle Borges · Portfólio 3° ano</span>
         </div>
+        <div class="intro-ring" aria-hidden="true"></div>
         <div class="intro-panel">
             <p class="intro-q" id="intro-q">Como você quer ver o site?</p>
             <div class="intro-choices" role="radiogroup" aria-labelledby="intro-q">
                 <button class="mode-btn" type="button" role="radio" data-modo="completo">
                     <span class="mode-k">01</span>
                     <span class="mode-t">Experiência completa</span>
-                    <span class="mode-d">Todos os efeitos, com a página construída pelos cursores</span>
+                    <span class="mode-d">Buraco negro animado e a página construída pelos cursores</span>
                     <span class="mode-flag">Sugerido para este aparelho</span>
                 </button>
                 <button class="mode-btn" type="button" role="radio" data-modo="leve">
                     <span class="mode-k">02</span>
                     <span class="mode-t">Modo leve</span>
-                    <span class="mode-d">Menos animação, para celulares mais simples ou internet lenta</span>
+                    <span class="mode-d">Imagens paradas e menos animação, para aparelhos mais simples</span>
                     <span class="mode-flag">Sugerido para este aparelho</span>
                 </button>
             </div>
@@ -111,14 +110,16 @@
             </div>
 
             <div class="hero-stage">
+                <div class="bh-slot" id="bh-slot" data-banna-skip aria-hidden="true"></div>
                 <p class="eyebrow hero-eyebrow"><span class="eyebrow-line"></span>Portfólio · 3° ano · Desenvolvimento de Sistemas<span class="eyebrow-line"></span></p>
+                <div class="hero-disc" aria-hidden="true"></div>
+                <img class="hero-photo" id="hero-photo" src="imagens/lorenzo.webp" alt="Foto de Lorenzo Kurrle Borges" width="1202" height="1309" fetchpriority="high">
                 <h1 class="hero-title">
                     <span class="ht-row">Lorenzo</span>
                     <span class="ht-row ht-small">Kurrle <em class="ht-outline">Borges</em></span>
                 </h1>
-                <div class="hero-disc" aria-hidden="true"></div>
-                <img class="hero-photo" src="imagens/lorenzo.webp" alt="Foto de Lorenzo Kurrle Borges" width="1202" height="1309" fetchpriority="high">
-
+            </div>
+            <div class="hero-foot">
                 <p class="hero-sub">Registro das disciplinas, projetos e aprendizados do <strong>3° ano</strong> do ensino médio técnico, separados entre a base comum e o técnico.</p>
                 <div class="hero-cta">
                     <a class="btn btn-solid" href="#/" data-scroll="atividades">Explorar atividades <span class="btn-arrow">↘</span></a>
@@ -232,6 +233,7 @@
         <img alt="">
     </div>
 
+    <script src="blackhole.js"></script>
     <script src="data/3ano.js"></script>
     <script src="script.js"></script>
 </body>

@@ -192,7 +192,7 @@ function route() {
   subject.hidden = !abrirMateria;
   if (!abrirMateria) document.title = 'Lorenzo Kurrle Borges · Portfólio';
   // No celular, deixa a aba da matéria atual visível na barra de matérias
-  if (abrirMateria) medirPlanta();
+  if (abrirMateria) { medirPlanta(); ajustarMidiaFixa(); }
   const ativa = abrirMateria && subject.querySelector('.subject-switch .active');
   if (ativa) ativa.parentElement.scrollLeft = ativa.offsetLeft - 16;
 
@@ -211,6 +211,22 @@ function route() {
 }
 
 let pendingScroll = null;
+
+// A mídia de uma atividade acompanha a rolagem enquanto o texto ao lado é mais comprido.
+// Assim, ao abrir "Conceitos e habilidades" ou o código, não sobra um vazio ao lado.
+// Se a mídia for mais alta que a tela, ela prende pela base em vez do topo.
+function ajustarMidiaFixa() {
+  document.querySelectorAll('#view-subject .activity-media').forEach((m) => {
+    const ultimo = m.lastElementChild;
+    if (!ultimo || !m.offsetHeight) return;
+    m.classList.add('is-sticky');
+    const altura = ultimo.getBoundingClientRect().bottom - m.getBoundingClientRect().top;
+    m.style.top = `${Math.round(Math.min(104, innerHeight - altura - 24))}px`;
+  });
+}
+addEventListener('resize', ajustarMidiaFixa, { passive: true });
+// imagens carregam depois: mede de novo quando cada uma chega
+$('#view-subject').addEventListener('load', ajustarMidiaFixa, true);
 
 function scrollToId(id, behavior = 'smooth') {
   const el = document.getElementById(id);

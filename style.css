@@ -612,6 +612,7 @@ html.lite .nav-mode-dot { background: var(--sand); }
   border: 1px solid var(--line); border-radius: calc(var(--radius) + 6px);
   background: var(--bg-2);
   overflow: hidden;
+  overflow: clip;   /* clip (e não hidden) deixa a mídia ficar fixa ao rolar */
   animation: rise .7s var(--ease) both;
   animation-delay: calc(var(--i) * 60ms);
 }
@@ -625,6 +626,8 @@ html.lite .nav-mode-dot { background: var(--sand); }
 @keyframes rise { from { opacity: 0; transform: translateY(24px); } }
 
 .activity-media { display: grid; gap: 12px; align-content: start; }
+/* A mídia acompanha a leitura quando o texto ao lado é mais comprido (classe e top postos pelo script) */
+.activity-media.is-sticky { position: sticky; top: 104px; align-self: start; }
 .media { position: relative; width: 100%; border-radius: 16px; overflow: hidden; background: #111; border: 1px solid var(--line); }
 .media-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .media-img { display: block; padding: 0; cursor: zoom-in; background: #fff; }
@@ -722,6 +725,142 @@ html.lite .nav-mode-dot { background: var(--sand); }
 @keyframes as-bounce { 50% { transform: translateY(4px); opacity: .5; } }
 @media (max-width: 560px) { .autoscroll-pill { left: 16px; right: 16px; justify-content: center; font-size: 12px; } }
 
+/* ----------------------------------------------------------------- astros (lua, planeta, supernova, pulsar) */
+
+/* Decoração do céu, feita só com CSS: leve, e parada no modo leve */
+.astro { pointer-events: none; }
+.astro i { position: absolute; display: block; }
+.astro-tag { position: absolute; left: 50%; bottom: -30px; transform: translateX(-50%); }
+@keyframes astro-float { 50% { transform: translateY(-14px); } }
+
+/* Lua */
+.astro-moon {
+  position: absolute; z-index: -1; right: 4%; top: -70px;
+  --d: clamp(110px, 17vw, 230px); width: var(--d); height: var(--d);
+  animation: astro-float 14s ease-in-out infinite;
+}
+.moon {
+  inset: 0; border-radius: 50%;
+  background:
+    radial-gradient(circle at 28% 32%, rgba(60, 50, 80, .38) 0 7%, transparent 8.5%),
+    radial-gradient(circle at 60% 22%, rgba(60, 50, 80, .3) 0 4.5%, transparent 6%),
+    radial-gradient(circle at 44% 58%, rgba(60, 50, 80, .32) 0 9%, transparent 10.5%),
+    radial-gradient(circle at 70% 64%, rgba(60, 50, 80, .26) 0 5%, transparent 6.5%),
+    radial-gradient(circle at 24% 70%, rgba(60, 50, 80, .24) 0 3.5%, transparent 5%),
+    radial-gradient(circle at 52% 82%, rgba(60, 50, 80, .2) 0 3%, transparent 4.5%),
+    radial-gradient(circle at 34% 30%, #F1ECF7, #C6BCD6 45%, #8B7FA3 100%);
+  box-shadow:
+    inset calc(var(--d) * -.2) calc(var(--d) * -.11) calc(var(--d) * .22) rgba(11, 12, 18, .94),
+    0 0 calc(var(--d) * .32) rgba(204, 144, 213, .2);
+}
+
+/* Planeta com anel */
+.astro-planet {
+  position: absolute; z-index: -1; right: 13%; top: 6px;
+  --d: clamp(70px, 9vw, 130px); width: var(--d); height: var(--d);
+  animation: astro-float 18s ease-in-out infinite reverse;
+}
+.planet {
+  inset: 0; border-radius: 50%;
+  background:
+    repeating-linear-gradient(168deg, rgba(255, 255, 255, .09) 0 5%, transparent 5% 13%, rgba(20, 8, 26, .16) 13% 17%, transparent 17% 24%),
+    radial-gradient(circle at 32% 28%, #CC90D5, #762B82 55%, #341439 100%);
+  box-shadow:
+    inset calc(var(--d) * -.2) calc(var(--d) * -.12) calc(var(--d) * .26) rgba(11, 12, 18, .88),
+    0 0 calc(var(--d) * .4) rgba(118, 43, 130, .4);
+}
+.planet-ring {
+  left: -48%; right: -48%; top: 33%; bottom: 33%; border-radius: 50%;
+  border: calc(var(--d) * .045) solid rgba(226, 201, 171, .6);
+  box-shadow: 0 0 0 calc(var(--d) * .03) rgba(226, 201, 171, .16);
+  transform: rotate(-18deg);
+}
+.planet-ring.front { clip-path: inset(50% -10% -10% -10%); }
+
+/* Supernova */
+.astro-nova { position: relative; height: clamp(230px, 27vw, 340px); margin-top: 8px; }
+.nova {
+  position: absolute; left: 46%; top: 48%;
+  --d: clamp(230px, 27vw, 340px); width: var(--d); height: var(--d);
+  transform: translate(-50%, -50%);
+}
+.nova-rays {
+  inset: 0; border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg,
+    transparent 0 7deg, rgba(204, 144, 213, .32) 8deg, transparent 10deg 21deg,
+    rgba(226, 201, 171, .22) 22deg, transparent 24deg 33deg,
+    rgba(190, 102, 204, .26) 34deg, transparent 36deg 45deg);
+  -webkit-mask-image: radial-gradient(circle, #000 6%, transparent 60%);
+  mask-image: radial-gradient(circle, #000 6%, transparent 60%);
+  animation: spin 110s linear infinite;
+}
+.nova-shell {
+  inset: 6%; border-radius: 50%;
+  background: radial-gradient(circle,
+    transparent 40%, rgba(174, 64, 191, .34) 51%, rgba(204, 144, 213, .26) 57%,
+    rgba(226, 201, 171, .12) 62%, transparent 70%);
+  animation: nova-breathe 6s ease-in-out infinite;
+}
+.nova-core {
+  inset: 0; border-radius: 50%;
+  background: radial-gradient(circle,
+    #fff 0 2.2%, rgba(240, 220, 255, .92) 4.5%, rgba(190, 102, 204, .55) 11%,
+    rgba(118, 43, 130, .26) 22%, transparent 38%);
+  animation: nova-pulse 3.2s ease-in-out infinite;
+}
+.nova-ring {
+  inset: 32%; border-radius: 50%; border: 1px solid rgba(204, 144, 213, .7);
+  opacity: 0; animation: nova-wave 5s ease-out infinite;
+}
+.nova-ring-2 { animation-delay: 2.5s; }
+.nova-flare { inset: 0; }
+.nova-flare::before, .nova-flare::after {
+  content: ''; position: absolute; left: 50%; top: 50%;
+  width: 62%; height: 1.5px; transform: translate(-50%, -50%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .85) 50%, transparent);
+}
+.nova-flare::after { transform: translate(-50%, -50%) rotate(90deg); width: 44%; }
+.astro-nova .astro-tag { left: 46%; bottom: 0; }
+@keyframes nova-pulse { 50% { transform: scale(1.1); opacity: .82; } }
+@keyframes nova-breathe { 50% { transform: scale(1.06); opacity: .75; } }
+@keyframes nova-wave { 0% { transform: scale(.25); opacity: .9; } 100% { transform: scale(2.6); opacity: 0; } }
+
+/* Pulsar: farol girando num disco visto de lado */
+.footer { position: relative; }
+.astro-pulsar {
+  position: absolute; z-index: -1; right: 7%; top: 46%;
+  --d: clamp(150px, 21vw, 290px); width: var(--d); height: var(--d);
+  transform: translateY(-50%);
+}
+.pulsar-disk { position: absolute; inset: 0; transform: rotate(-24deg) scaleY(.4); }
+.pulsar-beams {
+  inset: 0; border-radius: 50%;
+  background: conic-gradient(from -6deg,
+    rgba(204, 144, 213, .85) 0 12deg, transparent 12deg 180deg,
+    rgba(204, 144, 213, .85) 180deg 192deg, transparent 192deg);
+  -webkit-mask-image: radial-gradient(circle, #000 0, rgba(0, 0, 0, .45) 34%, transparent 70%);
+  mask-image: radial-gradient(circle, #000 0, rgba(0, 0, 0, .45) 34%, transparent 70%);
+  animation: spin 2.4s linear infinite;
+}
+.pulsar-wave {
+  inset: 38%; border-radius: 50%; border: 2px solid rgba(204, 144, 213, .75);
+  opacity: 0; animation: pulsar-wave 2.4s ease-out infinite;
+}
+.pulsar-wave-2 { animation-delay: 1.2s; }
+.pulsar-core {
+  left: 50%; top: 50%; width: 7%; height: 7%; border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  box-shadow: 0 0 calc(var(--d) * .05) #fff, 0 0 calc(var(--d) * .14) rgba(204, 144, 213, .9), 0 0 calc(var(--d) * .3) rgba(118, 43, 130, .7);
+  animation: pulsar-flash 1.2s ease-in-out infinite;
+}
+.astro-pulsar .astro-tag { bottom: 8%; }
+@keyframes pulsar-wave { 0% { transform: scale(.3); opacity: .9; } 100% { transform: scale(3.6); opacity: 0; } }
+@keyframes pulsar-flash { 0%, 100% { opacity: .75; } 12% { opacity: 1; transform: translate(-50%, -50%) scale(1.35); } 30% { transform: translate(-50%, -50%) scale(1); } }
+
+html.lite .astro, html.lite .astro *, html.lite .astro *::before, html.lite .astro *::after { animation: none !important; }
+html.lite .nova-ring, html.lite .pulsar-wave { display: none; }
+
 /* ----------------------------------------------------------------- lightbox */
 
 .modal {
@@ -779,6 +918,11 @@ html.lite .nav-mode-dot { background: var(--sand); }
   .bp-head { top: -30px; }
 
   .activity, .activity:nth-child(even) { grid-template-columns: 1fr; }
+  .activity-media.is-sticky { position: static; }
+  .astro-moon { top: -96px; right: 2%; }
+  .astro-planet { top: -84px; right: 6%; }
+  .astro-pulsar { top: 70px; right: 4%; transform: none; }
+  .astro-tag { display: none; }
   .activity:nth-child(even) .activity-media { order: 0; }
   .about { grid-template-columns: 1fr; }
   .section-head { grid-template-columns: 1fr; }

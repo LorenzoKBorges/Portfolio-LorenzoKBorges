@@ -329,6 +329,7 @@ const MODO = {
       pararRolagem();
       if (window.Banna) window.Banna.skip();
     }
+    atualizarEspaco();
   }
 };
 
@@ -389,7 +390,7 @@ function decorarPlanta() {
   });
   const palco = $('.hero-stage');
   palco.insertAdjacentHTML('beforeend',
-    '<span class="bp bp-tag bp-title" aria-hidden="true">h1 · Unbounded 800</span>' +
+    '<span class="bp bp-tag bp-hole" aria-hidden="true">&lt;canvas&gt; · buraco negro · WebGL</span>' +
     '<span class="bp bp-tag bp-photo" aria-hidden="true">&lt;img&gt; · 1202 × 1309</span>');
 }
 
@@ -401,11 +402,120 @@ function medirPlanta() {
 }
 addEventListener('resize', medirPlanta, { passive: true });
 
+// ---------------------------------------------------------------- espaço (estrelas e buraco negro)
+
+// Campo de estrelas: desenhado uma vez num canvas (custa quase nada), mais algumas
+// estrelas piscando e uma estrela cadente de vez em quando no modo completo.
+function desenharEstrelas() {
+  const c = $('#stars');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = c.clientWidth;
+  const h = c.clientHeight;
+  c.width = w * dpr;
+  c.height = h * dpr;
+  const g = c.getContext('2d');
+  g.scale(dpr, dpr);
+  // gerador com semente fixa: o céu é o mesmo a cada visita e a cada redimensionamento
+  let seed = 20260;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const n = Math.round((w * h) / 2600);
+  for (let i = 0; i < n; i++) {
+    const r = rnd();
+    g.globalAlpha = 0.2 + rnd() * 0.7;
+    g.fillStyle = r < 0.09 ? '#CC90D5' : r < 0.14 ? '#E2C9AB' : '#FFFFFF';
+    const tam = rnd() < 0.92 ? 0.4 + rnd() * 0.7 : 1.1 + rnd() * 0.6;
+    g.beginPath();
+    g.arc(rnd() * w, rnd() * h, tam, 0, Math.PI * 2);
+    g.fill();
+  }
+}
+
+function criarPiscantes() {
+  const box = $('#twinkles');
+  const n = innerWidth < 700 ? 14 : 34;
+  let html = '';
+  for (let i = 0; i < n; i++) {
+    const cor = Math.random() < 0.25 ? '#CC90D5' : Math.random() < 0.15 ? '#E2C9AB' : '#fff';
+    html += `<i class="tw" style="left:${(Math.random() * 100).toFixed(2)}%;top:${(Math.random() * 100).toFixed(2)}%;--s:${(1 + Math.random() * 1.6).toFixed(1)}px;--d:${(2.4 + Math.random() * 3.6).toFixed(1)}s;--o:-${(Math.random() * 5).toFixed(1)}s;--c:${cor}"></i>`;
+  }
+  box.innerHTML = html;
+}
+
+let cadenteTimer = 0;
+function estrelaCadente() {
+  clearTimeout(cadenteTimer);
+  if (MODO.atual === 'leve' || SEM_ANIMACAO) return;
+  cadenteTimer = setTimeout(() => {
+    if (!document.hidden && MODO.atual !== 'leve') {
+      const el = document.createElement('i');
+      el.className = 'shoot';
+      el.style.cssText = `--x:${(5 + Math.random() * 70).toFixed(1)}%;--y:${(Math.random() * 45).toFixed(1)}%;--a:${(18 + Math.random() * 22).toFixed(0)}deg;` +
+        `--len:${(90 + Math.random() * 110).toFixed(0)}px;--dist:${(260 + Math.random() * 260).toFixed(0)}px;--d:${(0.8 + Math.random() * 0.6).toFixed(2)}s`;
+      $('.bg-fx').append(el);
+      el.addEventListener('animationend', () => el.remove());
+    }
+    estrelaCadente();
+  }, 4500 + Math.random() * 6000);
+}
+
+// Buraco negro: nasce na tela de abertura e depois fica atrás da foto no topo
+const BH = (() => {
+  const canvas = $('#bh');
+  const bh = window.BlackHole ? window.BlackHole.create(canvas) : { ok: false };
+  if (!bh.ok) HTML.classList.add('no-webgl');
+  bh.canvas = canvas;
+  return bh;
+})();
+
+// Posição no topo: centro do buraco na cabeça da foto, anel um pouco maior que o cabelo
+function verBuracoNoTopo() {
+  const foto = $('#hero-photo');
+  BH.setView(() => {
+    const f = foto.getBoundingClientRect();
+    const c = BH.canvas.getBoundingClientRect();
+    return {
+      cx: f.left + f.width * 0.53 - c.left,
+      cy: f.top + f.height * 0.2 - c.top,
+      ring: f.height * 0.29
+    };
+  });
+}
+
+function levarBuracoParaOTopo() {
+  if (!BH.ok) return;
+  $('#bh-slot').append(BH.canvas);
+  BH.resetZoom();
+  verBuracoNoTopo();
+  atualizarEspaco();
+  requestAnimationFrame(() => requestAnimationFrame(() => BH.canvas.classList.add('on')));
+}
+
+// Liga ou congela as animações do espaço conforme o modo
+function atualizarEspaco() {
+  if (BH.ok) {
+    if (MODO.atual === 'leve' || SEM_ANIMACAO) BH.renderOnce();
+    else BH.start();
+  }
+  estrelaCadente();
+}
+
+let estrelasTimer = 0;
+addEventListener('resize', () => {
+  clearTimeout(estrelasTimer);
+  estrelasTimer = setTimeout(desenharEstrelas, 200);
+}, { passive: true });
+$('#hero-photo').addEventListener('load', () => { if (BH.ok) BH.refresh(); });
+
 // ---------------------------------------------------------------- abertura
 
 function initIntro() {
   const intro = $('#intro');
-  if (!HTML.classList.contains('intro')) { intro.remove(); return; }
+  if (!HTML.classList.contains('intro')) {
+    // sem abertura (menos movimento / ?nobanna): o buraco vai direto para o topo, parado
+    levarBuracoParaOTopo();
+    intro.remove();
+    return;
+  }
 
   const cores = ['#762B82', '#E2C9AB', '#E5E5E5', '#9236A1', '#C9A27E', '#5E2269'];
   const N = 9; // mesmo número de cursores do modo completo
@@ -439,26 +549,59 @@ function initIntro() {
   sugerir(sugerirModo());
   marcar(escolha, true);
 
+  // ---- buraco negro no centro do espaço reservado (.intro-ring)
+  const centro = () => {
+    const r = anel.getBoundingClientRect();
+    return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, ring: Math.max(46, r.height * 0.2) };
+  };
+  if (BH.ok) {
+    BH.setView(centro);
+    if (salvo === 'leve') BH.renderOnce(); else BH.start();
+  }
+
   // ---- órbita (e medição de fluidez para a sugestão)
+  // Com o buraco negro, os cursores seguem o disco: uma elipse inclinada, e quem passa
+  // por trás "sobe" por cima da sombra, como a luz curvada pela gravidade.
+  const INCL = 0.40;   // mesma inclinação do disco no shader
+  const ACHATA = 0.21; // disco visto quase de lado
+  const fases = cursores.map((_, i) => (i / N) * Math.PI * 2 + (i % 3) * 0.5);
+  const raios = cursores.map((_, i) => 2.15 + (i % 4) * 0.42);
   let raf = 0;
   let saindo = false;
   let raio = 70;
+  let encolhe = 1;
   let quadros = 0;
   let medido = false;
   const inicio = performance.now();
   const girar = (agora) => {
     const t = (agora - inicio) / 1000;
-    const r = anel.getBoundingClientRect();
-    const cx = r.left + r.width / 2;
-    const cy = r.top + r.height / 2;
-    const alvo = saindo ? 40 : 70 + Math.sin(t) * 12;
-    raio += (alvo - raio) * 0.12;
-    cursores.forEach((el, i) => {
-      const a = (i / N) * Math.PI * 2 + t * 0.6;
-      const x = cx + Math.cos(a) * raio + Math.sin(t * 1.6 + i) * 3;
-      const y = cy + Math.sin(a) * raio + Math.cos(t * 1.3 + i) * 3;
-      el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
-    });
+    const { cx, cy, ring } = centro();
+    if (BH.ok) {
+      if (saindo) encolhe += (0 - encolhe) * 0.1;
+      const cosI = Math.cos(INCL);
+      const sinI = Math.sin(INCL);
+      cursores.forEach((el, i) => {
+        const a = ring * raios[i] * encolhe;
+        const fi = fases[i] + t * (0.95 / Math.pow(raios[i] / 2.15, 1.5));
+        const x = a * Math.cos(fi);
+        let y = a * ACHATA * Math.sin(fi);          // y para cima
+        const atras = Math.sin(fi) > 0;
+        if (atras) y = Math.max(y, Math.sqrt(Math.max(0, Math.pow(ring * 1.32 * encolhe, 2) - x * x)));
+        const X = cx + x * cosI - y * sinI;
+        const Y = cy - (x * sinI + y * cosI);
+        el.style.transform = `translate(${X.toFixed(1)}px, ${Y.toFixed(1)}px) scale(${atras ? 0.78 : 1})`;
+        el.style.opacity = saindo ? String(Math.max(0, encolhe * 1.4 - 0.2)) : atras ? '0.75' : '1';
+      });
+    } else {
+      const alvo = saindo ? 40 : 70 + Math.sin(t) * 12;
+      raio += (alvo - raio) * 0.12;
+      cursores.forEach((el, i) => {
+        const a = (i / N) * Math.PI * 2 + t * 0.6;
+        const x = cx + Math.cos(a) * raio + Math.sin(t * 1.6 + i) * 3;
+        const y = cy + Math.sin(a) * raio + Math.cos(t * 1.3 + i) * 3;
+        el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+      });
+    }
     // Conta os quadros entre 0,5 s e 2 s (o começo é sempre mais lento por causa do carregamento)
     if (t > 0.5 && t <= 2) quadros++;
     if (t > 2 && !medido) {
@@ -475,17 +618,30 @@ function initIntro() {
     if (saindo) return;
     saindo = true;
     removeEventListener('keydown', onKey);
-    MODO.definir(m);
     botoes.forEach((b) => b.classList.toggle('pressed', b.dataset.modo === m));
     intro.classList.add('pressing');
-    setTimeout(() => {
+
+    const abrirSite = () => {
       window.scrollTo(0, 0);
+      MODO.definir(m);
       intro.classList.add('leaving');
       // Mostrar o site e esconder as camadas acontece no mesmo quadro: nada pisca
       HTML.classList.remove('intro');
+      levarBuracoParaOTopo();
       medirPlanta();
       construir();
       setTimeout(() => { cancelAnimationFrame(raf); intro.remove(); }, 450);
+    };
+
+    setTimeout(() => {
+      if (BH.ok && m === 'completo') {
+        // mergulho: a interface some e a sombra do buraco cresce até cobrir a tela
+        intro.classList.add('diving');
+        BH.start();
+        BH.dive(950).then(abrirSite);
+      } else {
+        abrirSite();
+      }
     }, 280);
   };
   const onKey = (e) => {
@@ -555,6 +711,8 @@ function pararRolagem() {
 
 function iniciarRolagem() {
   if (!podeRolarSozinho()) { AUTO.timer = setTimeout(iniciarRolagem, AUTO.espera); return; }
+  // espera os cursores terminarem o que já está na tela antes de começar a descer
+  if (window.Banna && window.Banna.busy()) { AUTO.timer = setTimeout(iniciarRolagem, 1000); return; }
   AUTO.ativo = true;
   $('#autoscroll-pill').classList.add('on');
   moverCamera();
@@ -610,6 +768,8 @@ addEventListener('hashchange', pararRolagem);
 
 // ---------------------------------------------------------------- início
 
+desenharEstrelas();
+criarPiscantes();
 renderHome();
 decorarPlanta();
 route();
@@ -617,3 +777,4 @@ addEventListener('hashchange', route);
 initIntro();
 if (!HTML.classList.contains('intro')) medirPlanta();
 pararRolagem(); // começa a contagem de inatividade
+estrelaCadente();

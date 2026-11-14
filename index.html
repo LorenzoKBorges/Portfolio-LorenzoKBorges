@@ -12,9 +12,9 @@
          (veja a tela de abertura em script.js). -->
     <script src="banna.js"
         data-auto="false"
-        data-speed="1.35"
+        data-speed="0.75"
         data-agents="9"
-        data-max-wait="5"
+        data-max-wait="10"
         data-colors="#D7422C,#E2C9AB,#E5E5E5,#F06A4F,#C9A27E,#B8343F"
         data-exclude=".marquee, .hero-cursors, .bg-fx, .modal"
         data-label-agents="construtores"
@@ -196,6 +196,11 @@
             <a href="#/" data-scroll="topo">Voltar ao topo ↑</a>
         </div>
     </footer>
+
+    <!-- Aviso de rolagem automática -->
+    <div class="autoscroll-pill" id="autoscroll-pill" data-banna-skip aria-hidden="true">
+        <span class="as-dot"></span>Descendo sozinho · mexa o mouse ou toque para parar
+    </div>
 
     <!-- Visualizador de imagens -->
     <div class="modal" id="lightbox" hidden>

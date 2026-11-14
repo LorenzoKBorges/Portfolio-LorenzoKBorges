@@ -326,12 +326,12 @@ function initIntro() {
     const cx = innerWidth / 2;
     const cy = innerHeight / 2;
     // Antes de sair, o círculo fecha no raio em que o banna posiciona os cursores dele
-    const alvo = saindo ? 40 : 70 + Math.sin(t * 1.7) * 12;
+    const alvo = saindo ? 40 : 70 + Math.sin(t * 1) * 12;
     raio += (alvo - raio) * 0.12;
     cursores.forEach((el, i) => {
-      const a = (i / N) * Math.PI * 2 + t * 1.15;
-      const x = cx + Math.cos(a) * raio + Math.sin(t * 3 + i) * 3;
-      const y = cy + Math.sin(a) * raio + Math.cos(t * 2.6 + i) * 3;
+      const a = (i / N) * Math.PI * 2 + t * 0.6;
+      const x = cx + Math.cos(a) * raio + Math.sin(t * 1.6 + i) * 3;
+      const y = cy + Math.sin(a) * raio + Math.cos(t * 1.3 + i) * 3;
       el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
     });
     raf = requestAnimationFrame(girar);
@@ -363,9 +363,71 @@ function initIntro() {
   intro.focus({ preventScroll: true });
 }
 
+// ---------------------------------------------------------------- rolagem automática
+
+// Se o visitante ficar parado, a página desce devagar sozinha.
+// Qualquer movimento (mouse, toque, roda, teclado) para a rolagem e reinicia a contagem.
+const AUTO = {
+  espera: 5000,       // ms parado antes de começar a descer
+  velocidade: 42,     // pixels por segundo
+  ativo: false,
+  timer: 0,
+  raf: 0,
+  sobra: 0,
+  ultimo: 0
+};
+
+function podeRolarSozinho() {
+  return CONSTRUIR &&
+    !document.documentElement.classList.contains('intro') &&
+    !document.body.classList.contains('menu-open') &&
+    $('#lightbox').hidden &&
+    !document.hidden &&
+    document.activeElement?.tagName !== 'IFRAME' &&   // vendo um Canva / vídeo
+    innerHeight + scrollY < document.documentElement.scrollHeight - 2;
+}
+
+function pararRolagem() {
+  if (AUTO.ativo) {
+    AUTO.ativo = false;
+    cancelAnimationFrame(AUTO.raf);
+    $('#autoscroll-pill').classList.remove('on');
+  }
+  clearTimeout(AUTO.timer);
+  AUTO.timer = setTimeout(iniciarRolagem, AUTO.espera);
+}
+
+function iniciarRolagem() {
+  if (!podeRolarSozinho()) { AUTO.timer = setTimeout(iniciarRolagem, AUTO.espera); return; }
+  AUTO.ativo = true;
+  AUTO.sobra = 0;
+  AUTO.ultimo = performance.now();
+  $('#autoscroll-pill').classList.add('on');
+  const passo = (agora) => {
+    if (!AUTO.ativo) return;
+    if (!podeRolarSozinho()) { pararRolagem(); return; }
+    const dt = Math.min((agora - AUTO.ultimo) / 1000, 0.05);
+    AUTO.ultimo = agora;
+    AUTO.sobra += AUTO.velocidade * dt;
+    const px = Math.floor(AUTO.sobra);
+    if (px >= 1) {
+      AUTO.sobra -= px;
+      window.scrollBy({ top: px, behavior: 'instant' });
+    }
+    AUTO.raf = requestAnimationFrame(passo);
+  };
+  AUTO.raf = requestAnimationFrame(passo);
+}
+
+['pointermove', 'pointerdown', 'wheel', 'touchstart', 'keydown'].forEach((ev) =>
+  addEventListener(ev, pararRolagem, { passive: true }));
+document.addEventListener('visibilitychange', pararRolagem);
+addEventListener('hashchange', pararRolagem);
+
 // ---------------------------------------------------------------- início
 
 renderHome();
 route();
 addEventListener('hashchange', route);
 initIntro();
+pararRolagem(); // começa a contagem de inatividade

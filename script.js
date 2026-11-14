@@ -85,10 +85,19 @@ function linkHTML(l) {
   return `<a class="pill-link ${l.estilo ? 'pl-' + l.estilo : ''}" href="${esc(l.href)}" target="_blank" rel="noopener">${esc(l.label)} <span>${icone}</span></a>`;
 }
 
+// Etiqueta da camada de "planta" acima da mídia: tipo · origem · proporção
+function rotuloMidia(m) {
+  if (!m) return '';
+  const origem = /canva/.test(m.src) ? 'Canva' : /youtu/.test(m.src) ? 'YouTube' : /docs\.google/.test(m.src) ? 'Google Docs' : 'Imagem';
+  const tipo = m.tipo === 'img' ? 'img' : 'iframe';
+  const ratio = m.tipo === 'img' ? '' : ` · ${m.ratio || (m.tipo === 'doc' ? '3/4' : '16/9')}`;
+  return `<span class="bp bp-tag bp-media" aria-hidden="true">&lt;${tipo}&gt; · ${origem}${ratio}</span>`;
+}
+
 function atividadeHTML(a, i) {
   return `
     <article class="activity" data-area="${esc(a.area || '')}" style="--i:${i}">
-      <div class="activity-media">${a.midia.map(midiaHTML).join('')}</div>
+      <div class="activity-media">${rotuloMidia(a.midia[0])}${a.midia.map(midiaHTML).join('')}</div>
       <div class="activity-info">
         <div class="activity-meta">
           <span class="activity-n">${pad(i + 1)}</span>
@@ -181,6 +190,10 @@ function route() {
   subject.hidden = !abrirMateria;
   if (!abrirMateria) document.title = 'Lorenzo Kurrle Borges · Portfólio';
   // No celular, deixa a aba da matéria atual visível na barra de matérias
+  if (abrirMateria) {
+    quebrarLetras(subject.querySelector('.subject-title'));
+    medirPlanta();
+  }
   const ativa = abrirMateria && subject.querySelector('.subject-switch .active');
   if (ativa) ativa.parentElement.scrollLeft = ativa.offsetLeft - 16;
 
@@ -190,9 +203,9 @@ function route() {
     pendingScroll = null;
     if (alvo && !abrirMateria) requestAnimationFrame(() => scrollToId(alvo, 'instant'));
     // Os cursores constroem cada nova página de matéria
-    if (abrirMateria && window.Banna && CONSTRUIR) {
+    if (abrirMateria) {
       document.querySelectorAll('.nav, .footer').forEach((el) => el.setAttribute('data-banna-skip', ''));
-      window.Banna.start();
+      construir();
     }
   }
   primeiraRota = false;
@@ -288,6 +301,7 @@ onScroll();
 if (matchMedia('(pointer: fine)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
   const fx = $('.bg-fx');
   addEventListener('pointermove', (e) => {
+    if (MODO.atual === 'leve') return;
     const x = (e.clientX / innerWidth - 0.5) * 30;
     const y = (e.clientY / innerHeight - 0.5) * 30;
     fx.style.setProperty('--px', `${x}px`);
@@ -295,19 +309,124 @@ if (matchMedia('(pointer: fine)').matches && !matchMedia('(prefers-reduced-motio
   }, { passive: true });
 }
 
-// ---------------------------------------------------------------- abertura
+// ---------------------------------------------------------------- modo (completo / leve)
 
 // Sem animação para quem pediu menos movimento no sistema ou usa ?nobanna
-const CONSTRUIR = !matchMedia('(prefers-reduced-motion: reduce)').matches && !/[?&]nobanna/.test(location.search);
+const SEM_ANIMACAO = matchMedia('(prefers-reduced-motion: reduce)').matches || /[?&]nobanna/.test(location.search);
+const CONSTRUIR = !SEM_ANIMACAO;
+const HTML = document.documentElement;
+
+const MODO = {
+  atual: HTML.classList.contains('lite') ? 'leve' : 'completo',
+  salvo() {
+    try { return localStorage.getItem('lkb-modo'); } catch { return null; }
+  },
+  definir(m) {
+    this.atual = m;
+    HTML.classList.toggle('lite', m === 'leve');
+    try { localStorage.setItem('lkb-modo', m); } catch { /* sem armazenamento: só vale nesta visita */ }
+    $('#nav-mode-label').textContent = m === 'leve' ? 'Modo leve' : 'Modo completo';
+    if (m === 'leve') {
+      pararRolagem();
+      if (window.Banna) window.Banna.skip();
+    }
+  }
+};
+
+// Sugestão de modo: aparelho com poucos recursos, economia de dados ou animação engasgando
+function sugerirModo(fps) {
+  const nav = navigator;
+  const poucosRecursos = nav.hardwareConcurrency && nav.hardwareConcurrency <= 4 && nav.deviceMemory && nav.deviceMemory <= 4;
+  const economia = nav.connection && nav.connection.saveData;
+  return poucosRecursos || economia || (fps && fps < 40) ? 'leve' : 'completo';
+}
+
+function opcoesBanna() {
+  return MODO.atual === 'leve'
+    ? { agents: 3, speed: 1.8, maxWait: 3 }
+    : { agents: 9, speed: 1, maxWait: 10 };
+}
+
+// Os cursores constroem a página. No modo leve: só a primeira tela, rápido, e o resto aparece pronto.
+function construir() {
+  if (!window.Banna || !CONSTRUIR) return;
+  window.Banna.start(opcoesBanna());
+  if (MODO.atual === 'leve') {
+    const eventos = ['wheel', 'touchmove', 'keydown'];
+    const fim = () => {
+      clearTimeout(timer);
+      eventos.forEach((ev) => removeEventListener(ev, fim));
+      window.Banna.skip();
+    };
+    const timer = setTimeout(fim, 3500);
+    eventos.forEach((ev) => addEventListener(ev, fim, { passive: true }));
+  }
+}
+
+$('#nav-mode').addEventListener('click', () => {
+  MODO.definir(MODO.atual === 'leve' ? 'completo' : 'leve');
+  closeMenu();
+});
+$('#nav-mode-label').textContent = MODO.atual === 'leve' ? 'Modo leve' : 'Modo completo';
+
+// ---------------------------------------------------------------- títulos em letras
+
+// Cada letra vira uma peça separada, para vários cursores digitarem o título juntos
+function quebrarLetras(el) {
+  if (!el || el.dataset.split) return;
+  el.dataset.split = '1';
+  const texto = el.textContent.trim();
+  const palavras = texto.split(/\s+/);
+  el.style.setProperty('--len', Math.max(...palavras.map((p) => p.length)));
+  if (el.matches('h1, h2, h3, h4')) el.setAttribute('aria-label', texto);
+  el.innerHTML = palavras
+    .map((p) => `<span class="sl-w" aria-hidden="true">${[...p].map((c) => `<span class="sl-l">${esc(c)}</span>`).join('')}</span>`)
+    .join(' ');
+}
+
+// ---------------------------------------------------------------- camada de "planta"
+
+// Etiquetas e cotas no estilo de ferramenta de design: mais peças para os cursores
+// construírem e reforço do tema "obra". Somem no modo leve.
+function decorarPlanta() {
+  document.querySelectorAll('#view-home .section').forEach((sec) => {
+    const head = sec.querySelector('.section-head');
+    if (!head || head.querySelector('.bp')) return;
+    head.insertAdjacentHTML('beforeend',
+      `<span class="bp bp-tag bp-head" aria-hidden="true">&lt;section id="${sec.id}"&gt;</span>` +
+      '<span class="bp bp-dim" aria-hidden="true"><span class="bp-dim-n"></span></span>');
+  });
+  document.querySelectorAll('.track').forEach((tr) => {
+    const n = tr.querySelectorAll('.subject-card').length;
+    tr.insertAdjacentHTML('beforeend', `<span class="bp bp-tag bp-track" aria-hidden="true">div.trilha · ${pad(n)} itens</span>`);
+  });
+  document.querySelectorAll('.feature-body').forEach((f, i) => {
+    f.insertAdjacentHTML('beforeend', `<span class="bp bp-tag bp-feat" aria-hidden="true">a.projeto · ${pad(i + 1)}</span>`);
+  });
+  const palco = $('.hero-stage');
+  palco.insertAdjacentHTML('beforeend',
+    '<span class="bp bp-tag bp-title" aria-hidden="true">h1 · Unbounded 800</span>' +
+    '<span class="bp bp-tag bp-photo" aria-hidden="true">&lt;img&gt; · 1202 × 1309</span>');
+}
+
+function medirPlanta() {
+  document.querySelectorAll('.bp-dim').forEach((d) => {
+    const w = d.getBoundingClientRect().width;
+    if (w) d.firstElementChild.textContent = `${Math.round(w)} px`;
+  });
+}
+addEventListener('resize', medirPlanta, { passive: true });
+
+// ---------------------------------------------------------------- abertura
 
 function initIntro() {
-  const root = document.documentElement;
   const intro = $('#intro');
-  if (!root.classList.contains('intro')) { intro.remove(); return; }
+  if (!HTML.classList.contains('intro')) { intro.remove(); return; }
 
   const cores = ['#D7422C', '#E2C9AB', '#E5E5E5', '#F06A4F', '#C9A27E', '#B8343F'];
-  const N = 9; // mesmo número de cursores do banna (data-agents)
+  const N = 9; // mesmo número de cursores do modo completo
   const orbit = $('#intro-orbit');
+  const anel = intro.querySelector('.intro-ring');
   const cursores = Array.from({ length: N }, (_, i) => {
     const el = document.createElement('span');
     el.className = 'intro-cursor';
@@ -317,16 +436,38 @@ function initIntro() {
     return el;
   });
 
+  // ---- escolha do modo
+  const botoes = [...intro.querySelectorAll('.mode-btn')];
+  const salvo = MODO.salvo();
+  let escolha = salvo || sugerirModo();
+  let decidido = !!salvo; // a pessoa já escolheu antes ou mexeu nas opções agora
+  const marcar = (m, foco) => {
+    escolha = m;
+    botoes.forEach((b) => {
+      const on = b.dataset.modo === m;
+      b.classList.toggle('selected', on);
+      b.setAttribute('aria-checked', String(on));
+      b.tabIndex = on ? 0 : -1;
+      if (on && foco) b.focus({ preventScroll: true });
+    });
+  };
+  const sugerir = (m) => botoes.forEach((b) => b.classList.toggle('suggested', b.dataset.modo === m));
+  sugerir(sugerirModo());
+  marcar(escolha, true);
+
+  // ---- órbita (e medição de fluidez para a sugestão)
   let raf = 0;
   let saindo = false;
   let raio = 70;
+  let quadros = 0;
+  let medido = false;
   const inicio = performance.now();
   const girar = (agora) => {
     const t = (agora - inicio) / 1000;
-    const cx = innerWidth / 2;
-    const cy = innerHeight / 2;
-    // Antes de sair, o círculo fecha no raio em que o banna posiciona os cursores dele
-    const alvo = saindo ? 40 : 70 + Math.sin(t * 1) * 12;
+    const r = anel.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const alvo = saindo ? 40 : 70 + Math.sin(t) * 12;
     raio += (alvo - raio) * 0.12;
     cursores.forEach((el, i) => {
       const a = (i / N) * Math.PI * 2 + t * 0.6;
@@ -334,65 +475,96 @@ function initIntro() {
       const y = cy + Math.sin(a) * raio + Math.cos(t * 1.3 + i) * 3;
       el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
     });
+    // Conta os quadros entre 0,5 s e 2 s (o começo é sempre mais lento por causa do carregamento)
+    if (t > 0.5 && t <= 2) quadros++;
+    if (t > 2 && !medido) {
+      medido = true;
+      const s = sugerirModo(quadros / 1.5);
+      sugerir(s);
+      if (!decidido) marcar(s, true);
+    }
     raf = requestAnimationFrame(girar);
   };
   raf = requestAnimationFrame(girar);
 
-  const entrar = () => {
+  const entrar = (m) => {
     if (saindo) return;
     saindo = true;
     removeEventListener('keydown', onKey);
+    MODO.definir(m);
+    botoes.forEach((b) => b.classList.toggle('pressed', b.dataset.modo === m));
     intro.classList.add('pressing');
     setTimeout(() => {
       window.scrollTo(0, 0);
       intro.classList.add('leaving');
       // Mostrar o site e esconder as camadas acontece no mesmo quadro: nada pisca
-      root.classList.remove('intro');
-      if (window.Banna && CONSTRUIR) window.Banna.start();
+      HTML.classList.remove('intro');
+      medirPlanta();
+      construir();
       setTimeout(() => { cancelAnimationFrame(raf); intro.remove(); }, 450);
-    }, 220);
+    }, 280);
   };
   const onKey = (e) => {
-    if (e.key === 'Enter' || e.key === ' ' || e.code === 'Space') {
-      e.preventDefault();
-      entrar();
-    }
+    if (e.key === 'Enter' || e.key === ' ' || e.code === 'Space') { e.preventDefault(); entrar(escolha); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === '1') { e.preventDefault(); decidido = true; marcar('completo', true); }
+    else if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === '2') { e.preventDefault(); decidido = true; marcar('leve', true); }
   };
-  intro.addEventListener('click', entrar);
+  botoes.forEach((b) => {
+    b.addEventListener('click', () => entrar(b.dataset.modo));
+    b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') { decidido = true; marcar(b.dataset.modo, false); } });
+  });
   addEventListener('keydown', onKey);
-  intro.focus({ preventScroll: true });
 }
 
-// ---------------------------------------------------------------- rolagem automática
+// ---------------------------------------------------------------- rolagem "câmera"
 
-// Se o visitante ficar parado, a página desce devagar sozinha.
-// Qualquer movimento (mouse, toque, roda, teclado) para a rolagem e reinicia a contagem.
+// Se o visitante ficar parado, a página vira uma apresentação: desce até o próximo
+// bloco, espera os cursores terminarem de construir o que apareceu, e segue.
+// Qualquer movimento (mouse, toque, roda, teclado) para e reinicia a contagem.
 const AUTO = {
-  espera: 5000,       // ms parado antes de começar a descer
-  velocidade: 42,     // pixels por segundo
+  espera: 5000,     // ms parado antes de começar
+  leitura: 1600,    // ms parado em cada bloco depois de construído
   ativo: false,
   timer: 0,
-  raf: 0,
-  sobra: 0,
-  ultimo: 0
+  pausa: 0,
+  raf: 0
 };
+const PARADAS = '.section-head, .track, .feature-row, .about, #certificados .empty, .activity, .pager, .footer';
 
 function podeRolarSozinho() {
   return CONSTRUIR &&
-    !document.documentElement.classList.contains('intro') &&
+    MODO.atual === 'completo' &&
+    !HTML.classList.contains('intro') &&
     !document.body.classList.contains('menu-open') &&
     $('#lightbox').hidden &&
     !document.hidden &&
     document.activeElement?.tagName !== 'IFRAME' &&   // vendo um Canva / vídeo
-    innerHeight + scrollY < document.documentElement.scrollHeight - 2;
+    scrollY < maxScroll() - 2;
+}
+
+const maxScroll = () => document.documentElement.scrollHeight - innerHeight;
+
+function proximoAlvo() {
+  const y = scrollY;
+  const topos = [...document.querySelectorAll(PARADAS)]
+    .filter((el) => el.offsetParent !== null)
+    .map((el) => el.getBoundingClientRect().top + y - 136)  // folga para o menu e as etiquetas
+    .filter((t) => t > y + innerHeight * 0.25)
+    .sort((a, b) => a - b);
+  // Nunca pula mais de 3/4 de tela, para nada passar sem ser construído
+  const alvo = Math.min(topos.length ? topos[0] : maxScroll(), y + innerHeight * 0.75, maxScroll());
+  return alvo > y + 2 ? alvo : null;
+}
+
+function encerrarRolagem() {
+  AUTO.ativo = false;
+  cancelAnimationFrame(AUTO.raf);
+  clearTimeout(AUTO.pausa);
+  $('#autoscroll-pill').classList.remove('on');
 }
 
 function pararRolagem() {
-  if (AUTO.ativo) {
-    AUTO.ativo = false;
-    cancelAnimationFrame(AUTO.raf);
-    $('#autoscroll-pill').classList.remove('on');
-  }
+  if (AUTO.ativo) encerrarRolagem();
   clearTimeout(AUTO.timer);
   AUTO.timer = setTimeout(iniciarRolagem, AUTO.espera);
 }
@@ -400,34 +572,66 @@ function pararRolagem() {
 function iniciarRolagem() {
   if (!podeRolarSozinho()) { AUTO.timer = setTimeout(iniciarRolagem, AUTO.espera); return; }
   AUTO.ativo = true;
-  AUTO.sobra = 0;
-  AUTO.ultimo = performance.now();
   $('#autoscroll-pill').classList.add('on');
-  const passo = (agora) => {
-    if (!AUTO.ativo) return;
-    if (!podeRolarSozinho()) { pararRolagem(); return; }
-    const dt = Math.min((agora - AUTO.ultimo) / 1000, 0.05);
-    AUTO.ultimo = agora;
-    AUTO.sobra += AUTO.velocidade * dt;
-    const px = Math.floor(AUTO.sobra);
-    if (px >= 1) {
-      AUTO.sobra -= px;
-      window.scrollBy({ top: px, behavior: 'instant' });
-    }
-    AUTO.raf = requestAnimationFrame(passo);
-  };
-  AUTO.raf = requestAnimationFrame(passo);
+  moverCamera();
 }
 
-['pointermove', 'pointerdown', 'wheel', 'touchstart', 'keydown'].forEach((ev) =>
-  addEventListener(ev, pararRolagem, { passive: true }));
+function moverCamera() {
+  if (!AUTO.ativo) return;
+  const alvo = podeRolarSozinho() ? proximoAlvo() : null;
+  if (alvo === null) { encerrarRolagem(); return; }
+  const de = scrollY;
+  const dist = alvo - de;
+  const dur = Math.min(2200, Math.max(900, Math.abs(dist) / 0.55));
+  const t0 = performance.now();
+  const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+  const quadro = (agora) => {
+    if (!AUTO.ativo) return;
+    const k = Math.min(1, (agora - t0) / dur);
+    window.scrollTo({ top: de + dist * ease(k), behavior: 'instant' });
+    if (k < 1) AUTO.raf = requestAnimationFrame(quadro);
+    else esperarConstrucao();
+  };
+  AUTO.raf = requestAnimationFrame(quadro);
+}
+
+// Espera os cursores ficarem livres por meio segundo (ou no máximo 12 s) antes de seguir
+function esperarConstrucao() {
+  const inicio = performance.now();
+  let livreDesde = 0;
+  const checar = (agora) => {
+    if (!AUTO.ativo) return;
+    const ocupado = window.Banna && window.Banna.busy();
+    if (ocupado) livreDesde = 0;
+    else if (!livreDesde) livreDesde = agora;
+    if ((livreDesde && agora - livreDesde > 500) || agora - inicio > 12000) {
+      AUTO.pausa = setTimeout(moverCamera, AUTO.leitura);
+      return;
+    }
+    AUTO.raf = requestAnimationFrame(checar);
+  };
+  AUTO.raf = requestAnimationFrame(checar);
+}
+
+// Mexer o mouse de verdade (mais de 3 px) conta como movimento; a rolagem sozinha não
+let ultimoPonteiro = null;
+addEventListener('pointermove', (e) => {
+  if (ultimoPonteiro && Math.abs(e.clientX - ultimoPonteiro[0]) + Math.abs(e.clientY - ultimoPonteiro[1]) < 4) return;
+  ultimoPonteiro = [e.clientX, e.clientY];
+  pararRolagem();
+}, { passive: true });
+['pointerdown', 'wheel', 'touchstart', 'keydown'].forEach((ev) => addEventListener(ev, pararRolagem, { passive: true }));
 document.addEventListener('visibilitychange', pararRolagem);
 addEventListener('hashchange', pararRolagem);
 
 // ---------------------------------------------------------------- início
 
 renderHome();
+document.querySelectorAll('.section-title, .track-title, .hero-title .ht-row:first-child, .hero-title .ht-word').forEach(quebrarLetras);
+$('.hero-title').setAttribute('aria-label', 'Lorenzo Kurrle Borges');
+decorarPlanta();
 route();
 addEventListener('hashchange', route);
 initIntro();
+if (!HTML.classList.contains('intro')) medirPlanta();
 pararRolagem(); // começa a contagem de inatividade

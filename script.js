@@ -4,7 +4,7 @@
 
 const TRILHAS = {
   basicas: { nome: 'Matérias básicas', curto: 'Básica', cor: 'var(--bas)' },
-  tecnicas: { nome: 'Matérias técnicas', curto: 'Técnico', cor: 'var(--tec)' }
+  tecnicas: { nome: 'Matérias técnicas', curto: 'Técnico', cor: 'var(--tec)', corTexto: 'var(--tec-ink)', corSobre: 'var(--tec-on)' }
 };
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -134,6 +134,8 @@ function renderSubject(trilha, id) {
 
   const view = $('#view-subject');
   view.style.setProperty('--track', t.cor);
+  view.style.setProperty('--track-ink', t.corTexto || t.cor);
+  view.style.setProperty('--on-track', t.corSobre || 'var(--ink)');
   view.innerHTML = `
     <section class="subject-hero">
       <div class="crumbs">
@@ -190,10 +192,7 @@ function route() {
   subject.hidden = !abrirMateria;
   if (!abrirMateria) document.title = 'Lorenzo Kurrle Borges · Portfólio';
   // No celular, deixa a aba da matéria atual visível na barra de matérias
-  if (abrirMateria) {
-    quebrarLetras(subject.querySelector('.subject-title'));
-    medirPlanta();
-  }
+  if (abrirMateria) medirPlanta();
   const ativa = abrirMateria && subject.querySelector('.subject-switch .active');
   if (ativa) ativa.parentElement.scrollLeft = ativa.offsetLeft - 16;
 
@@ -369,21 +368,6 @@ $('#nav-mode').addEventListener('click', () => {
 });
 $('#nav-mode-label').textContent = MODO.atual === 'leve' ? 'Modo leve' : 'Modo completo';
 
-// ---------------------------------------------------------------- títulos em letras
-
-// Cada letra vira uma peça separada, para vários cursores digitarem o título juntos
-function quebrarLetras(el) {
-  if (!el || el.dataset.split) return;
-  el.dataset.split = '1';
-  const texto = el.textContent.trim();
-  const palavras = texto.split(/\s+/);
-  el.style.setProperty('--len', Math.max(...palavras.map((p) => p.length)));
-  if (el.matches('h1, h2, h3, h4')) el.setAttribute('aria-label', texto);
-  el.innerHTML = palavras
-    .map((p) => `<span class="sl-w" aria-hidden="true">${[...p].map((c) => `<span class="sl-l">${esc(c)}</span>`).join('')}</span>`)
-    .join(' ');
-}
-
 // ---------------------------------------------------------------- camada de "planta"
 
 // Etiquetas e cotas no estilo de ferramenta de design: mais peças para os cursores
@@ -423,7 +407,7 @@ function initIntro() {
   const intro = $('#intro');
   if (!HTML.classList.contains('intro')) { intro.remove(); return; }
 
-  const cores = ['#D7422C', '#E2C9AB', '#E5E5E5', '#F06A4F', '#C9A27E', '#B8343F'];
+  const cores = ['#762B82', '#E2C9AB', '#E5E5E5', '#9236A1', '#C9A27E', '#5E2269'];
   const N = 9; // mesmo número de cursores do modo completo
   const orbit = $('#intro-orbit');
   const anel = intro.querySelector('.intro-ring');
@@ -627,8 +611,6 @@ addEventListener('hashchange', pararRolagem);
 // ---------------------------------------------------------------- início
 
 renderHome();
-document.querySelectorAll('.section-title, .track-title, .hero-title .ht-row:first-child, .hero-title .ht-word').forEach(quebrarLetras);
-$('.hero-title').setAttribute('aria-label', 'Lorenzo Kurrle Borges');
 decorarPlanta();
 route();
 addEventListener('hashchange', route);

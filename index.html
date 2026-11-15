@@ -138,11 +138,6 @@
                 <span class="section-index">01</span>
                 <h2 class="section-title">Atividades</h2>
                 <p class="section-lead">Escolha uma trilha e depois a matéria. Cada matéria reúne os trabalhos, as habilidades trabalhadas e os links originais.</p>
-                <!-- Lua -->
-                <div class="astro astro-moon" data-banna-skip aria-hidden="true">
-                    <i class="moon"></i>
-                    <span class="bp bp-tag astro-tag">lua · fase crescente</span>
-                </div>
             </div>
 
             <div class="track" id="basicas" style="--track: var(--bas)">
@@ -173,12 +168,6 @@
                 <span class="section-index">02</span>
                 <h2 class="section-title">Em destaque</h2>
                 <p class="section-lead">Projetos que cruzam várias matérias do técnico.</p>
-                <!-- Planeta com anel -->
-                <div class="astro astro-planet" data-banna-skip aria-hidden="true">
-                    <i class="planet-ring"></i>
-                    <i class="planet"></i>
-                    <i class="planet-ring front"></i>
-                </div>
             </div>
             <div class="feature-row" id="feature-row"></div>
         </section>
@@ -196,18 +185,6 @@
                     <ul class="about-tags">
                         <li>Xadrez</li><li>Coup</li><li>Jogos de cartas</li><li>Vôlei</li><li>Natação</li>
                     </ul>
-                    <!-- Supernova: ocupa o espaço ao lado do documento -->
-                    <div class="astro astro-nova" data-banna-skip aria-hidden="true">
-                        <div class="nova">
-                            <i class="nova-rays"></i>
-                            <i class="nova-shell"></i>
-                            <i class="nova-ring"></i>
-                            <i class="nova-ring nova-ring-2"></i>
-                            <i class="nova-core"></i>
-                            <i class="nova-flare"></i>
-                        </div>
-                        <span class="bp bp-tag astro-tag">supernova · onda de choque</span>
-                    </div>
                 </div>
                 <div class="about-doc">
                     <div class="frame">
@@ -224,13 +201,22 @@
             <div class="section-head">
                 <span class="section-index">04</span>
                 <h2 class="section-title">Certificados</h2>
-                <p class="section-lead">Conquistas, cursos e especializações acadêmicas.</p>
+                <p class="section-lead">Olimpíadas científicas, torneios de xadrez, cursos e eventos. Clique num certificado para ampliar.</p>
             </div>
-            <div class="empty">
-                <div class="empty-icon">✦</div>
-                <p>Esta seção está sendo preparada para exibir meus certificados.</p>
-                <small>Em breve</small>
+
+            <div class="cert-intro">
+                <button class="cert-photo" data-zoom="imagens/certificados/medalhas.webp" data-caption="Com as medalhas" aria-label="Ampliar a foto com as medalhas">
+                    <img src="imagens/certificados/medalhas.webp" alt="Lorenzo sorrindo ao lado das medalhas que conquistou" loading="lazy" width="1086" height="1448">
+                </button>
+                <div class="cert-resumo">
+                    <p class="about-big">Gosto de competir e de me colocar à prova.</p>
+                    <p class="cert-texto">Aqui estão os certificados das olimpíadas científicas, dos torneios de xadrez, dos cursos de programação e dos eventos de que participei.</p>
+                    <dl class="cert-stats" id="cert-stats"></dl>
+                </div>
             </div>
+
+            <div class="filters cert-filters" id="cert-filters" role="group" aria-label="Filtrar certificados"></div>
+            <div class="cert-grid" id="cert-grid"></div>
         </section>
     </main>
 
@@ -238,16 +224,6 @@
     <main id="view-subject" class="view" hidden></main>
 
     <footer class="footer">
-        <!-- Pulsar -->
-        <div class="astro astro-pulsar" data-banna-skip aria-hidden="true">
-            <div class="pulsar-disk">
-                <i class="pulsar-beams"></i>
-                <i class="pulsar-wave"></i>
-                <i class="pulsar-wave pulsar-wave-2"></i>
-            </div>
-            <i class="pulsar-core"></i>
-            <span class="bp bp-tag astro-tag">pulsar · 1 giro a cada 2,4 s</span>
-        </div>
         <div class="footer-big">Lorenzo<br>Kurrle Borges</div>
         <div class="footer-row">
             <span>Portfólio · 3° ano · Desenvolvimento de Sistemas</span>
@@ -264,10 +240,12 @@
     <div class="modal" id="lightbox" hidden>
         <button class="modal-close" aria-label="Fechar">✕</button>
         <img alt="">
+        <p class="modal-cap" id="lightbox-cap"></p>
     </div>
 
     <script src="blackhole.js"></script>
     <script src="data/3ano.js"></script>
+    <script src="data/certificados.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

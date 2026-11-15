@@ -70,6 +70,44 @@ function renderHome() {
   }).join('');
 }
 
+// ---------------------------------------------------------------- certificados
+
+function renderCertificados() {
+  const total = CERTIFICADOS.length;
+  const conta = (f) => CERTIFICADOS.filter(f).length;
+  const medalhas = conta((c) => ['ouro', 'prata', 'bronze'].includes(c.medalha));
+  $('#cert-stats').innerHTML = [
+    [total, 'certificados'],
+    [medalhas, 'medalhas em olimpíadas'],
+    [conta((c) => c.medalha === 'mencao'), 'menções honrosas'],
+    [conta((c) => c.cat === 'xadrez'), 'torneios de xadrez']
+  ].map(([n, l]) => `<div><dt>${pad(n)}</dt><dd>${l}</dd></div>`).join('');
+
+  $('#cert-filters').innerHTML =
+    '<span class="filters-label">Categorias</span>' +
+    `<button class="chip active" data-cat="">Todos <i>${total}</i></button>` +
+    Object.entries(CERT_CATEGORIAS).map(([id, nome]) =>
+      `<button class="chip" data-cat="${id}">${esc(nome)} <i>${conta((c) => c.cat === id)}</i></button>`).join('');
+
+  $('#cert-grid').innerHTML = CERTIFICADOS.map((c) => {
+    const base = `imagens/certificados/${c.arquivo}`;
+    const medalha = c.medalha ? CERT_MEDALHAS[c.medalha] : '';
+    const legenda = [c.titulo, medalha, c.org, c.ano].filter(Boolean).join(' · ');
+    return `
+      <button class="cert-card" data-cat="${c.cat}" data-zoom="${base}.webp" data-caption="${esc(legenda)}" aria-label="Ampliar: ${esc(c.titulo)}">
+        <span class="cert-thumb"><img src="${base}-p.webp" alt="Certificado: ${esc(c.titulo)}" loading="lazy"></span>
+        <span class="cert-body">
+          <span class="cert-meta">
+            <span>${esc(CERT_CATEGORIAS[c.cat])}${c.ano ? ' · ' + c.ano : ''}</span>
+            ${medalha ? `<span class="cert-medal m-${c.medalha}">${esc(medalha)}</span>` : ''}
+          </span>
+          <span class="cert-title">${esc(c.titulo)}</span>
+          <span class="cert-org">${esc(c.org)}</span>
+        </span>
+      </button>`;
+  }).join('');
+}
+
 // ---------------------------------------------------------------- matéria
 
 function midiaHTML(m) {
@@ -192,7 +230,7 @@ function route() {
   subject.hidden = !abrirMateria;
   if (!abrirMateria) document.title = 'Lorenzo Kurrle Borges · Portfólio';
   // No celular, deixa a aba da matéria atual visível na barra de matérias
-  if (abrirMateria) medirPlanta();
+  if (abrirMateria) { medirPlanta(); ajustarMidiaFixa(); }
   const ativa = abrirMateria && subject.querySelector('.subject-switch .active');
   if (ativa) ativa.parentElement.scrollLeft = ativa.offsetLeft - 16;
 
@@ -211,6 +249,22 @@ function route() {
 }
 
 let pendingScroll = null;
+
+// A mídia de uma atividade acompanha a rolagem enquanto o texto ao lado é mais comprido.
+// Assim, ao abrir "Conceitos e habilidades" ou o código, não sobra um vazio ao lado.
+// Se a mídia for mais alta que a tela, ela prende pela base em vez do topo.
+function ajustarMidiaFixa() {
+  document.querySelectorAll('#view-subject .activity-media').forEach((m) => {
+    const ultimo = m.lastElementChild;
+    if (!ultimo || !m.offsetHeight) return;
+    m.classList.add('is-sticky');
+    const altura = ultimo.getBoundingClientRect().bottom - m.getBoundingClientRect().top;
+    m.style.top = `${Math.round(Math.min(104, innerHeight - altura - 24))}px`;
+  });
+}
+addEventListener('resize', ajustarMidiaFixa, { passive: true });
+// imagens carregam depois: mede de novo quando cada uma chega
+$('#view-subject').addEventListener('load', ajustarMidiaFixa, true);
 
 function scrollToId(id, behavior = 'smooth') {
   const el = document.getElementById(id);
@@ -235,6 +289,14 @@ document.addEventListener('click', (e) => {
     return;
   }
 
+  const certChip = e.target.closest('#cert-filters .chip');
+  if (certChip) {
+    document.querySelectorAll('#cert-filters .chip').forEach((c) => c.classList.toggle('active', c === certChip));
+    const cat = certChip.dataset.cat;
+    document.querySelectorAll('#cert-grid .cert-card').forEach((c) => { c.hidden = !!cat && c.dataset.cat !== cat; });
+    return;
+  }
+
   const chip = e.target.closest('#filters .chip');
   if (chip) {
     document.querySelectorAll('#filters .chip').forEach((c) => c.classList.toggle('active', c === chip));
@@ -252,6 +314,7 @@ document.addEventListener('click', (e) => {
   if (zoom) {
     const box = $('#lightbox');
     box.querySelector('img').src = zoom.dataset.zoom;
+    $('#lightbox-cap').textContent = zoom.dataset.caption || '';
     box.hidden = false;
     requestAnimationFrame(() => box.classList.add('open'));
     return;
@@ -669,7 +732,7 @@ const AUTO = {
   pausa: 0,
   raf: 0
 };
-const PARADAS = '.section-head, .track, .feature-row, .about, #certificados .empty, .activity, .pager, .footer';
+const PARADAS = '.section-head, .track, .feature-row, .about, .cert-intro, .cert-filters, .activity, .pager, .footer';
 
 function podeRolarSozinho() {
   return CONSTRUIR &&
@@ -771,6 +834,7 @@ addEventListener('hashchange', pararRolagem);
 desenharEstrelas();
 criarPiscantes();
 renderHome();
+renderCertificados();
 decorarPlanta();
 route();
 addEventListener('hashchange', route);

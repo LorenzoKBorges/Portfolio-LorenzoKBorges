@@ -201,13 +201,22 @@
             <div class="section-head">
                 <span class="section-index">04</span>
                 <h2 class="section-title">Certificados</h2>
-                <p class="section-lead">Conquistas, cursos e especializações acadêmicas.</p>
+                <p class="section-lead">Olimpíadas científicas, torneios de xadrez, cursos e eventos. Clique num certificado para ampliar.</p>
             </div>
-            <div class="empty">
-                <div class="empty-icon">✦</div>
-                <p>Esta seção está sendo preparada para exibir meus certificados.</p>
-                <small>Em breve</small>
+
+            <div class="cert-intro">
+                <button class="cert-photo" data-zoom="imagens/certificados/medalhas.webp" data-caption="Com as medalhas" aria-label="Ampliar a foto com as medalhas">
+                    <img src="imagens/certificados/medalhas.webp" alt="Lorenzo sorrindo ao lado das medalhas que conquistou" loading="lazy" width="1086" height="1448">
+                </button>
+                <div class="cert-resumo">
+                    <p class="about-big">Gosto de competir e de me colocar à prova.</p>
+                    <p class="cert-texto">Aqui estão os certificados das olimpíadas científicas, dos torneios de xadrez, dos cursos de programação e dos eventos de que participei.</p>
+                    <dl class="cert-stats" id="cert-stats"></dl>
+                </div>
             </div>
+
+            <div class="filters cert-filters" id="cert-filters" role="group" aria-label="Filtrar certificados"></div>
+            <div class="cert-grid" id="cert-grid"></div>
         </section>
     </main>
 
@@ -231,10 +240,12 @@
     <div class="modal" id="lightbox" hidden>
         <button class="modal-close" aria-label="Fechar">✕</button>
         <img alt="">
+        <p class="modal-cap" id="lightbox-cap"></p>
     </div>
 
     <script src="blackhole.js"></script>
     <script src="data/3ano.js"></script>
+    <script src="data/certificados.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

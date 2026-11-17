@@ -30,8 +30,7 @@
   }
 
   const LABELS = {
-    en: { agents: 'builders', layers: 'layers', skip: 'Show it now', credit: 'Made by rokhbin.ir' },
-    fa: { agents: 'سازنده', layers: 'لایه', skip: 'همین حالا نشان بده', credit: 'ساخته‌ی rokhbin.ir' },
+    en: { agents: 'builders', layers: 'layers', skip: 'Show it now', credit: 'Lorenzo Kurrle' },
   }
   const language = () => (root.lang || 'en').slice(0, 2).toLowerCase()
   const label = (key) => data[`label${key[0].toUpperCase()}${key.slice(1)}`] || (LABELS[language()] || LABELS.en)[key]

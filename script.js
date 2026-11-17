@@ -530,6 +530,13 @@ const BH = (() => {
   return bh;
 })();
 
+// Pulsar no rodapé: some se o navegador não tiver WebGL
+const PULSAR = (() => {
+  const p = window.Pulsar ? window.Pulsar.create($('#pulsar')) : { ok: false };
+  if (!p.ok) $('#pulsar-slot').hidden = true;
+  return p;
+})();
+
 // Posição no topo: centro do buraco na cabeça da foto, anel um pouco maior que o cabelo
 function verBuracoNoTopo() {
   const foto = $('#hero-photo');
@@ -555,9 +562,14 @@ function levarBuracoParaOTopo() {
 
 // Liga ou congela as animações do espaço conforme o modo
 function atualizarEspaco() {
+  const parado = MODO.atual === 'leve' || SEM_ANIMACAO;
   if (BH.ok) {
-    if (MODO.atual === 'leve' || SEM_ANIMACAO) BH.renderOnce();
+    if (parado) BH.renderOnce();
     else BH.start();
+  }
+  if (PULSAR.ok) {
+    if (parado) PULSAR.renderOnce();
+    else PULSAR.start();
   }
   estrelaCadente();
 }

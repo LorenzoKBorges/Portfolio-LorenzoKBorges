@@ -701,7 +701,7 @@ html.lite .nav-mode-dot { background: var(--sand); }
 /* Pulsar: ocupa o lado direito do rodapé até a borda da tela */
 .pulsar-slot {
   position: absolute; z-index: 0;
-  top: 0; bottom: 70px; left: 60%;
+  top: 0; bottom: 0; left: 60%;
   right: calc((100% - 100vw) / 2);   /* passa da largura máxima do site e vai até a borda da janela */
   pointer-events: none;
 }
@@ -848,7 +848,11 @@ html.lite .nav-mode-dot { background: var(--sand); }
   .activity, .activity:nth-child(even) { grid-template-columns: 1fr; }
   .activity-media.is-sticky { position: static; }
   /* no celular, o pulsar fica acima do nome, ocupando a largura toda */
-  .pulsar-slot { position: relative; left: auto; right: auto; top: auto; bottom: auto; height: 340px; margin: -40px calc(var(--gutter) * -1) 0; }
+  /* no celular: nome em cima, pulsar logo abaixo dele, e a linha final por último */
+  .footer { display: flex; flex-direction: column; }
+  .footer-big { order: 1; }
+  .pulsar-slot { order: 2; position: relative; left: auto; right: auto; top: auto; bottom: auto; height: 380px; margin: -10px calc(var(--gutter) * -1) -40px; }
+  .footer-row { order: 3; }
   .cert-intro { grid-template-columns: 1fr; }
   .cert-photo { max-width: 300px; margin: 0 auto 10px; }
   .cert-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }

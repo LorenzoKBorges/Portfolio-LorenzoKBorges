@@ -10,6 +10,17 @@
 precision highp float;
 uniform vec2 uRes;
 uniform float uTime;
+uniform vec2 uCenter;   // centro da estrela, em pixels do canvas
+
+// Cores: azul puxado para o roxo (anil). Para ajustar o tom, mexa só aqui.
+const vec3 COR_FEIXE       = vec3(0.40, 0.24, 1.00);  // feixe (parte externa)
+const vec3 COR_FEIXE_CLARO = vec3(0.86, 0.82, 1.00);  // miolo do feixe
+const vec3 COR_HALO        = vec3(0.44, 0.28, 1.00);  // brilho em volta da estrela
+const vec3 COR_SUP_ESCURA  = vec3(0.08, 0.04, 0.36);  // superfície: manchas escuras
+const vec3 COR_SUP_CLARA   = vec3(0.34, 0.22, 0.95);  // superfície: manchas claras
+const vec3 COR_SUP_BRILHO  = vec3(0.55, 0.45, 1.00);  // superfície: reflexos
+const vec3 COR_BORDA       = vec3(0.60, 0.52, 1.00);  // borda iluminada da esfera
+const vec3 COR_POLO        = vec3(0.86, 0.82, 1.00);  // calotas quentes nos polos
 
 const float PI = 3.14159265;
 const float R = 0.125;                    // raio da estrela (fração do menor lado da tela)
@@ -54,7 +65,7 @@ float fbm3(vec3 p) {
 }
 
 void main() {
-  vec2 uv = (gl_FragCoord.xy - 0.5 * uRes) / min(uRes.x, uRes.y);
+  vec2 uv = (gl_FragCoord.xy - uCenter) / min(uRes.x, uRes.y);
   float d = length(uv);
 
   // fundo transparente: o céu (estrelas e nebulosa) é o do próprio site
@@ -80,12 +91,12 @@ void main() {
              + inner * (0.35 + 0.75 * streak)
              + outer * (0.05 + 0.40 * smoothstep(0.3, 0.8, puff)) * smoothstep(0.1, 0.7, along);
   beam *= smoothstep(R * 0.80, R * 1.05, along);
-  vec3 beamCol = mix(vec3(0.10, 0.36, 1.0), vec3(0.80, 0.92, 1.0), clamp(core + inner * 0.35, 0.0, 1.0));
+  vec3 beamCol = mix(COR_FEIXE, COR_FEIXE_CLARO, clamp(core + inner * 0.35, 0.0, 1.0));
   col += beamCol * beam;
 
   // ---------- halo em volta da estrela ----------
   float out_ = max(d - R, 0.0);
-  col += vec3(0.16, 0.48, 1.0) * (exp(-out_ / 0.022) * 0.85 + exp(-out_ / 0.11) * 0.22);
+  col += COR_HALO * (exp(-out_ / 0.022) * 0.85 + exp(-out_ / 0.11) * 0.22);
 
   // ---------- estrela de nêutrons: esfera com superfície girando ----------
   if (d < R) {
@@ -103,17 +114,17 @@ void main() {
     float t2 = fbm3(q * 6.5 + 4.0);
     float tex = smoothstep(0.25, 0.75, t1 * 0.65 + t2 * 0.35);
 
-    vec3 surf = mix(vec3(0.02, 0.09, 0.36), vec3(0.10, 0.36, 0.95), tex);
-    surf += vec3(0.30, 0.55, 1.0) * pow(tex, 3.0) * 0.35;
+    vec3 surf = mix(COR_SUP_ESCURA, COR_SUP_CLARA, tex);
+    surf += COR_SUP_BRILHO * pow(tex, 3.0) * 0.35;
     surf *= 0.45 + 0.55 * n.z;
 
     float rim = pow(1.0 - n.z, 2.2);
-    surf += vec3(0.35, 0.68, 1.0) * rim * 1.25;
+    surf += COR_BORDA * rim * 1.25;
 
     // calotas quentes nos polos magnéticos, de onde saem os feixes
     vec3 pole = vec3(sn, cs, 0.0);
     float cap = pow(abs(dot(n, pole)), 14.0);
-    surf += vec3(0.75, 0.9, 1.0) * cap * 1.1;
+    surf += COR_POLO * cap * 1.1;
 
     float aa = smoothstep(R, R - 0.004, d);
     col = mix(col, surf, aa);
@@ -127,13 +138,14 @@ void main() {
   float alpha = max(max(col.r, col.g), max(col.b, solid));
   // some suave perto das bordas do canvas, para os feixes não terminarem num corte
   vec2 e = gl_FragCoord.xy / uRes;
-  float fade = smoothstep(0.0, 0.2, e.y) * smoothstep(1.0, 0.8, e.y)
+  float fade = smoothstep(0.0, 0.14, e.y) * smoothstep(1.0, 0.78, e.y)
              * smoothstep(0.0, 0.12, e.x) * smoothstep(1.0, 0.88, e.x);
   gl_FragColor = vec4(col, alpha) * fade;
 }
 `;
   var VS = 'attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }';
   var QUADRO_PARADO = 4.0; // instante usado no modo leve: feixes no meio da oscilação
+  var CENTRO_Y = 0.68;     // altura do centro da estrela, do topo (0) à base (1) do canvas
 
   function create(canvas) {
     var gl = null;
@@ -166,6 +178,7 @@ void main() {
     gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
     var uRes = gl.getUniformLocation(prog, 'uRes');
     var uTime = gl.getUniformLocation(prog, 'uTime');
+    var uCenter = gl.getUniformLocation(prog, 'uCenter');
 
     // resolução adaptativa: começa menor em telas pequenas e reduz se o quadro estiver lento
     var scale = Math.min(window.devicePixelRatio || 1, Math.min(innerWidth, innerHeight) < 700 ? 1 : 1.5);
@@ -186,6 +199,9 @@ void main() {
       resize();
       gl.uniform2f(uRes, canvas.width, canvas.height);
       gl.uniform1f(uTime, time);
+      // no celular o canvas fica entre o nome e a linha final, então a estrela vai no meio
+      var cy = canvas.clientWidth < 600 ? 0.5 : CENTRO_Y;
+      gl.uniform2f(uCenter, canvas.width * 0.5, canvas.height * (1 - cy));  // y do WebGL cresce para cima
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     }
     function frame(now) {

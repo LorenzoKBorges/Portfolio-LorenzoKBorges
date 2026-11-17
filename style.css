@@ -695,7 +695,17 @@ html.lite .nav-mode-dot { background: var(--sand); }
 
 /* ----------------------------------------------------------------- rodapé */
 
-.footer { max-width: var(--max); margin: 0 auto; padding: clamp(100px, 14vw, 180px) var(--gutter) 40px; }
+.footer { position: relative; max-width: var(--max); margin: 0 auto; padding: clamp(100px, 14vw, 180px) var(--gutter) 40px; }
+.footer-big, .footer-row { position: relative; z-index: 1; }
+
+/* Pulsar: ocupa o lado direito do rodapé até a borda da tela */
+.pulsar-slot {
+  position: absolute; z-index: 0;
+  top: 0; bottom: 0; left: 60%;
+  right: calc((100% - 100vw) / 2);   /* passa da largura máxima do site e vai até a borda da janela */
+  pointer-events: none;
+}
+.pulsar-canvas { display: block; width: 100%; height: 100%; }
 .footer-big {
   font: 800 clamp(40px, 10vw, 160px)/.88 var(--display); letter-spacing: -.055em; text-transform: uppercase;
   background: linear-gradient(180deg, var(--text) 30%, rgba(229,229,229,.06));
@@ -837,6 +847,12 @@ html.lite .nav-mode-dot { background: var(--sand); }
 
   .activity, .activity:nth-child(even) { grid-template-columns: 1fr; }
   .activity-media.is-sticky { position: static; }
+  /* no celular, o pulsar fica acima do nome, ocupando a largura toda */
+  /* no celular: nome em cima, pulsar logo abaixo dele, e a linha final por último */
+  .footer { display: flex; flex-direction: column; }
+  .footer-big { order: 1; }
+  .pulsar-slot { order: 2; position: relative; left: auto; right: auto; top: auto; bottom: auto; height: 380px; margin: -10px calc(var(--gutter) * -1) -40px; }
+  .footer-row { order: 3; }
   .cert-intro { grid-template-columns: 1fr; }
   .cert-photo { max-width: 300px; margin: 0 auto 10px; }
   .cert-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }

@@ -11,6 +11,7 @@ precision highp float;
 uniform vec2 uRes;
 uniform float uTime;
 uniform vec2 uCenter;   // centro da estrela, em pixels do canvas
+uniform float uUnit;    // pixels por unidade (controla o tamanho do pulsar inteiro)
 
 // Cores: azul puxado para o roxo (anil). Para ajustar o tom, mexa só aqui.
 const vec3 COR_FEIXE       = vec3(0.40, 0.24, 1.00);  // feixe (parte externa)
@@ -65,7 +66,7 @@ float fbm3(vec3 p) {
 }
 
 void main() {
-  vec2 uv = (gl_FragCoord.xy - uCenter) / min(uRes.x, uRes.y);
+  vec2 uv = (gl_FragCoord.xy - uCenter) / uUnit;
   float d = length(uv);
 
   // fundo transparente: o céu (estrelas e nebulosa) é o do próprio site
@@ -145,7 +146,8 @@ void main() {
 `;
   var VS = 'attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }';
   var QUADRO_PARADO = 4.0; // instante usado no modo leve: feixes no meio da oscilação
-  var CENTRO_Y = 0.68;     // altura do centro da estrela, do topo (0) à base (1) do canvas
+  var CENTRO_Y = 0.60;     // altura do centro da estrela, do topo (0) à base (1) do canvas
+  var TAMANHO = 1.1;       // 1 = tamanho original do shader; 1.1 = 10% maior
 
   function create(canvas) {
     var gl = null;
@@ -179,6 +181,7 @@ void main() {
     var uRes = gl.getUniformLocation(prog, 'uRes');
     var uTime = gl.getUniformLocation(prog, 'uTime');
     var uCenter = gl.getUniformLocation(prog, 'uCenter');
+    var uUnit = gl.getUniformLocation(prog, 'uUnit');
 
     // resolução adaptativa: começa menor em telas pequenas e reduz se o quadro estiver lento
     var scale = Math.min(window.devicePixelRatio || 1, Math.min(innerWidth, innerHeight) < 700 ? 1 : 1.5);
@@ -202,6 +205,7 @@ void main() {
       // no celular o canvas fica entre o nome e a linha final, então a estrela vai no meio
       var cy = canvas.clientWidth < 600 ? 0.5 : CENTRO_Y;
       gl.uniform2f(uCenter, canvas.width * 0.5, canvas.height * (1 - cy));  // y do WebGL cresce para cima
+      gl.uniform1f(uUnit, Math.min(canvas.width, canvas.height) * TAMANHO);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     }
     function frame(now) {

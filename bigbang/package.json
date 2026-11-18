@@ -1,0 +1,14 @@
+{
+  "name": "bigbang-animacao",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Animação do Big Bang em WebGL (three.js), versão para a abertura do portfólio.",
+  "scripts": {
+    "build": "esbuild src/main.js --bundle --minify --format=iife --target=es2019 --outfile=bigbang.js",
+    "dev": "esbuild src/main.js --bundle --sourcemap --format=iife --target=es2019 --outfile=bigbang.js --watch"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.0",
+    "three": "0.180.0"
+  }
+}

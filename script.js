@@ -583,6 +583,22 @@ $('#hero-photo').addEventListener('load', () => { if (BH.ok) BH.refresh(); });
 
 // ---------------------------------------------------------------- abertura
 
+// O Big Bang (bigbang/bigbang.js, ~600 KB com o three.js) só é baixado por quem vai vê-lo
+let bigBangCarregando = null;
+function carregarBigBang() {
+  if (!bigBangCarregando) {
+    bigBangCarregando = new Promise((ok) => {
+      if (window.BigBang) { ok(window.BigBang); return; }
+      const s = document.createElement('script');
+      s.src = 'bigbang/bigbang.js';
+      s.onload = () => ok(window.BigBang || null);
+      s.onerror = () => ok(null);
+      document.head.append(s);
+    });
+  }
+  return bigBangCarregando;
+}
+
 function initIntro() {
   const intro = $('#intro');
   if (!HTML.classList.contains('intro')) {
@@ -624,48 +640,69 @@ function initIntro() {
   sugerir(sugerirModo());
   marcar(escolha, true);
 
-  // ---- buraco negro no centro do espaço reservado (.intro-ring)
+  // ---- centro do espaço reservado (.intro-ring): é ali que o ponto pulsa e os cursores giram
   const centro = () => {
     const r = anel.getBoundingClientRect();
-    return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, ring: Math.max(46, r.height * 0.2) };
+    return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, h: r.height };
   };
-  if (BH.ok) {
-    BH.setView(centro);
-    if (salvo === 'leve') BH.renderOnce(); else BH.start();
+  // a cena do Big Bang é desenhada com o ponto no meio da tela: desloca até o centro do anel
+  const alinharPalco = () => {
+    const dy = Math.round(centro().cy - innerHeight / 2);
+    intro.style.setProperty('--bb-y', `${dy}px`);
+    if (bbPronto && !intro.classList.contains('bb-rodando')) window.BigBang.deslocar(dy);
+  };
+
+  // ---- Big Bang ao fundo (quem escolheu o modo leve antes não baixa a animação)
+  let bbPronto = false;
+  const bbElementos = { palco: $('#bb-palco'), vinheta: $('#bb-vinheta'), clarao: $('#bb-clarao') };
+  const prepararBigBang = () => carregarBigBang().then((BB) => {
+    if (!BB || !BB.suportado || !BB.preparar(bbElementos)) {
+      intro.classList.remove('bb-on');
+      return false;
+    }
+    bbPronto = true;
+    alinharPalco();
+    intro.classList.add('bb-pronto');
+    return true;
+  });
+  let medirDesde = 0.5; // s: começa a medir a fluidez depois que a cena carrega
+  if (salvo !== 'leve') {
+    intro.classList.add('bb-on');
+    alinharPalco();
+    prepararBigBang().then(() => { medirDesde = Math.max(medirDesde, (performance.now() - inicio) / 1000 + 0.4); });
   }
+  addEventListener('resize', alinharPalco);
 
   // ---- órbita (e medição de fluidez para a sugestão)
-  // Com o buraco negro, os cursores seguem o disco: uma elipse inclinada, e quem passa
-  // por trás "sobe" por cima da sombra, como a luz curvada pela gravidade.
-  const INCL = 0.40;   // mesma inclinação do disco no shader
-  const ACHATA = 0.21; // disco visto quase de lado
+  // Os cursores giram em volta do ponto, cada um numa distância; na experiência completa
+  // eles são sugados por ele logo antes da explosão.
   const fases = cursores.map((_, i) => (i / N) * Math.PI * 2 + (i % 3) * 0.5);
-  const raios = cursores.map((_, i) => 2.15 + (i % 4) * 0.42);
+  const raios = cursores.map((_, i) => 1 + (i % 4) * 0.16);
   let raf = 0;
   let saindo = false;
+  let sugando = false;
   let raio = 70;
   let encolhe = 1;
   let quadros = 0;
   let medido = false;
   const inicio = performance.now();
+  let anterior = inicio;
   const girar = (agora) => {
     const t = (agora - inicio) / 1000;
-    const { cx, cy, ring } = centro();
-    if (BH.ok) {
-      if (saindo) encolhe += (0 - encolhe) * 0.1;
-      const cosI = Math.cos(INCL);
-      const sinI = Math.sin(INCL);
+    const dt = Math.min((agora - anterior) / 1000, 0.1);
+    anterior = agora;
+    const { cx, cy, h } = centro();
+    if (intro.classList.contains('bb-on')) {
+      // sugados pelo ponto em ~0,6 s, qualquer que seja a velocidade do aparelho
+      if (sugando) encolhe *= Math.exp(-dt * 5);
+      const base = Math.min(Math.max(h * 0.36, 62), 120);
       cursores.forEach((el, i) => {
-        const a = ring * raios[i] * encolhe;
-        const fi = fases[i] + t * (0.95 / Math.pow(raios[i] / 2.15, 1.5));
-        const x = a * Math.cos(fi);
-        let y = a * ACHATA * Math.sin(fi);          // y para cima
-        const atras = Math.sin(fi) > 0;
-        if (atras) y = Math.max(y, Math.sqrt(Math.max(0, Math.pow(ring * 1.32 * encolhe, 2) - x * x)));
-        const X = cx + x * cosI - y * sinI;
-        const Y = cy - (x * sinI + y * cosI);
-        el.style.transform = `translate(${X.toFixed(1)}px, ${Y.toFixed(1)}px) scale(${atras ? 0.78 : 1})`;
-        el.style.opacity = saindo ? String(Math.max(0, encolhe * 1.4 - 0.2)) : atras ? '0.75' : '1';
+        const r = base * raios[i] * encolhe;
+        const fi = fases[i] + t * (0.9 / Math.pow(raios[i], 1.5)) * (sugando ? 1 + (1 - encolhe) * 4 : 1);
+        const x = cx + Math.cos(fi) * r;
+        const y = cy + Math.sin(fi) * r * 0.82;
+        el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${(0.6 + 0.4 * encolhe).toFixed(2)})`;
+        el.style.opacity = sugando ? Math.min(1, Math.max(0, encolhe * 1.5 - 0.3)).toFixed(2) : '1';
       });
     } else {
       const alvo = saindo ? 40 : 70 + Math.sin(t) * 12;
@@ -677,9 +714,9 @@ function initIntro() {
         el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
       });
     }
-    // Conta os quadros entre 0,5 s e 2 s (o começo é sempre mais lento por causa do carregamento)
-    if (t > 0.5 && t <= 2) quadros++;
-    if (t > 2 && !medido) {
+    // Conta os quadros por 1,5 s (depois que a cena carrega: o começo é sempre mais lento)
+    if (!medido && t > medirDesde && t <= medirDesde + 1.5) quadros++;
+    if (!medido && t > medirDesde + 1.5) {
       medido = true;
       const s = sugerirModo(quadros / 1.5);
       sugerir(s);
@@ -689,6 +726,40 @@ function initIntro() {
   };
   raf = requestAnimationFrame(girar);
 
+  const pular = $('#bb-pular');
+  const abrirSite = (m, devagar) => {
+    window.scrollTo(0, 0);
+    MODO.definir(m);
+    intro.classList.toggle('leaving-slow', !!devagar);
+    intro.classList.add('leaving');
+    // Mostrar o site e esconder as camadas acontece no mesmo quadro: nada pisca
+    HTML.classList.remove('intro');
+    removeEventListener('resize', alinharPalco);
+    removeEventListener('keydown', onEsc);
+    levarBuracoParaOTopo();
+    medirPlanta();
+    construir();
+    setTimeout(() => {
+      cancelAnimationFrame(raf);
+      if (window.BigBang) window.BigBang.descartar();
+      intro.remove();
+    }, devagar ? 1300 : 450);
+  };
+
+  // Experiência completa: os cursores são sugados, o ponto explode, e a tela branca vira o site
+  const tocarBigBang = () => {
+    intro.classList.add('diving', 'bb-rodando');
+    sugando = true;
+    addEventListener('bigbang:fim', () => abrirSite('completo', true), { once: true });
+    window.BigBang.comecar();
+    setTimeout(() => {
+      intro.classList.add('bb-pulavel');
+      pular.focus({ preventScroll: true });
+    }, 1200);
+  };
+  const onEsc = (e) => { if (e.key === 'Escape' && window.BigBang) window.BigBang.pular(); };
+  pular.addEventListener('click', () => { if (window.BigBang) window.BigBang.pular(); });
+
   const entrar = (m) => {
     if (saindo) return;
     saindo = true;
@@ -696,27 +767,19 @@ function initIntro() {
     botoes.forEach((b) => b.classList.toggle('pressed', b.dataset.modo === m));
     intro.classList.add('pressing');
 
-    const abrirSite = () => {
-      window.scrollTo(0, 0);
-      MODO.definir(m);
-      intro.classList.add('leaving');
-      // Mostrar o site e esconder as camadas acontece no mesmo quadro: nada pisca
-      HTML.classList.remove('intro');
-      levarBuracoParaOTopo();
-      medirPlanta();
-      construir();
-      setTimeout(() => { cancelAnimationFrame(raf); intro.remove(); }, 450);
-    };
-
     setTimeout(() => {
-      if (BH.ok && m === 'completo') {
-        // mergulho: a interface some e a sombra do buraco cresce até cobrir a tela
-        intro.classList.add('diving');
-        BH.start();
-        BH.dive(950).then(abrirSite);
-      } else {
-        abrirSite();
-      }
+      if (m !== 'completo') { abrirSite(m); return; }
+      addEventListener('keydown', onEsc);
+      if (bbPronto) { tocarBigBang(); return; }
+      // ainda carregando (ou a pessoa tinha escolhido o modo leve antes): espera até 8 s
+      intro.classList.add('bb-on', 'diving');
+      alinharPalco();
+      const desistir = setTimeout(() => abrirSite(m), 8000);
+      prepararBigBang().then((ok) => {
+        clearTimeout(desistir);
+        if (ok && HTML.classList.contains('intro')) tocarBigBang();
+        else if (HTML.classList.contains('intro')) abrirSite(m);
+      });
     }, 280);
   };
   const onKey = (e) => {

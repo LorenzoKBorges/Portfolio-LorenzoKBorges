@@ -61,7 +61,7 @@
     .bar button { min-height: 36px; padding: 0 14px; background: none; border: 1px solid rgb(255 255 255 / .35); border-radius: 999px; color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
     .bar button:hover { border-color: #F5B942; color: #FFD27A; }
     .bar button:focus-visible, .bar a:focus-visible { outline: 3px solid #F5B942; outline-offset: 2px; }
-    .bar a { color: #FFD27A; font-size: 12px; text-decoration: none; }
+    .bar a, .bar .credit { color: #FFD27A; font-size: 12px; text-decoration: none; }
     .bar a:hover { text-decoration: underline; }
     @media (max-width: 899px) { .bar { bottom: auto; top: 68px; gap: 8px; font-size: 12px; } .bar button { padding: 0 10px; } }
     @media print { .layer, .bar { display: none; } }`
@@ -201,10 +201,9 @@
       button.addEventListener('click', skip)
       bar.append(countEl, button)
       if (options.credit) {
-        const credit = document.createElement('a')
-        credit.href = 'https://rokhbin.ir'
-        credit.target = '_blank'
-        credit.rel = 'noopener'
+        // crédito só como texto, sem link
+        const credit = document.createElement('span')
+        credit.className = 'credit'
         credit.textContent = label('credit')
         bar.append(credit)
       }

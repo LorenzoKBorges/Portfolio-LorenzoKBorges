@@ -48,8 +48,12 @@
 
     <!-- Tela de abertura: cursores girando enquanto o visitante escolhe o modo -->
     <div class="intro-screen" id="intro" data-banna-skip role="dialog" aria-modal="true" aria-labelledby="intro-q">
-        <!-- O buraco negro nasce aqui e, depois da entrada, vai para trás da foto no topo -->
-        <canvas class="bh-canvas" id="bh" aria-hidden="true"></canvas>
+        <!-- Big Bang (three.js, pasta bigbang/): o ponto pulsa ao fundo enquanto a pessoa escolhe;
+             na experiência completa ele explode e termina numa tela branca que vira o site -->
+        <div class="bb-layer bb-palco" id="bb-palco" aria-hidden="true"></div>
+        <div class="bb-layer bb-vinheta" id="bb-vinheta" aria-hidden="true"></div>
+        <div class="bb-layer bb-clarao" id="bb-clarao" aria-hidden="true"></div>
+        <button class="bb-pular" id="bb-pular" type="button">Pular animação <kbd>Esc</kbd></button>
         <div class="intro-orbit" id="intro-orbit" aria-hidden="true"></div>
         <div class="intro-top">
             <span class="intro-logo">LKB<i></i></span>
@@ -62,13 +66,13 @@
                 <button class="mode-btn" type="button" role="radio" data-modo="completo">
                     <span class="mode-k">01</span>
                     <span class="mode-t">Experiência completa</span>
-                    <span class="mode-d">Buraco negro animado e a página construída pelos cursores</span>
+                    <span class="mode-d">Animação do Big Bang (30 s, dá para pular) e a página construída pelos cursores</span>
                     <span class="mode-flag">Sugerido para este aparelho</span>
                 </button>
                 <button class="mode-btn" type="button" role="radio" data-modo="leve">
                     <span class="mode-k">02</span>
                     <span class="mode-t">Modo leve</span>
-                    <span class="mode-d">Imagens paradas e menos animação, para aparelhos mais simples</span>
+                    <span class="mode-d">Sem a animação de abertura e com imagens paradas, para aparelhos mais simples</span>
                     <span class="mode-flag">Sugerido para este aparelho</span>
                 </button>
             </div>
@@ -110,7 +114,9 @@
             </div>
 
             <div class="hero-stage">
-                <div class="bh-slot" id="bh-slot" data-banna-skip aria-hidden="true"></div>
+                <div class="bh-slot" id="bh-slot" data-banna-skip aria-hidden="true">
+                    <canvas class="bh-canvas" id="bh"></canvas>
+                </div>
                 <p class="eyebrow hero-eyebrow"><span class="eyebrow-line"></span>Portfólio · 3° ano · Desenvolvimento de Sistemas<span class="eyebrow-line"></span></p>
                 <div class="hero-disc" aria-hidden="true"></div>
                 <img class="hero-photo" id="hero-photo" src="imagens/lorenzo.webp" alt="Foto de Lorenzo Kurrle Borges" width="1202" height="1309" fetchpriority="high">

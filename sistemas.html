@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Sistemas solares · Lorenzo Kurrle Borges</title>
+    <meta name="description" content="Protótipo: as matérias do 3° ano como planetas de dois sistemas solares.">
+    <meta name="theme-color" content="#07070c">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* Protótipo dos sistemas solares. Mesmas cores e fontes do portfólio (style.css). */
+        :root {
+            --paper: #E5E5E5; --sand: #E2C9AB; --red: #762B82; --red-ink: #B46CC2; --wine: #341439;
+            --bg: #07070c; --muted: #A8A39B; --dim: #6B6862; --line: rgba(229, 229, 229, .12);
+            --display: 'Unbounded', system-ui, sans-serif; --body: 'Inter Tight', system-ui, sans-serif; --mono: 'JetBrains Mono', ui-monospace, monospace;
+            --ease: cubic-bezier(.2, .8, .2, 1);
+            --trilha: var(--sand);
+        }
+        * { box-sizing: border-box; }
+        [hidden] { display: none !important; }
+        html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--paper); font: 400 15px/1.5 var(--body); -webkit-font-smoothing: antialiased; }
+        button { font: inherit; color: inherit; }
+        a { color: inherit; text-decoration: none; }
+
+        #palco, #palco canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+        #palco { touch-action: none; }
+        /* vinheta: escurece as bordas e ajuda a ler a interface por cima */
+        .vinheta { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(7, 4, 14, .75) 100%); }
+
+        /* ---------------- barra de cima ---------------- */
+        .topo {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 5;
+            display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+            padding: 22px clamp(16px, 4vw, 44px); pointer-events: none;
+            background: linear-gradient(180deg, rgba(7, 7, 12, .8), transparent);
+        }
+        .topo > * { pointer-events: auto; }
+        .voltar-site { display: inline-flex; align-items: center; gap: 8px; font: 500 12px/1 var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); padding: 10px 0; }
+        .voltar-site:hover { color: var(--paper); }
+        .cabeca { flex: 1 1 260px; display: grid; gap: 6px; }
+        .kicker { display: inline-flex; align-items: center; gap: 10px; font: 500 11px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .14em; color: var(--trilha); transition: color .6s; }
+        .kicker::before { content: ''; width: 9px; height: 9px; background: var(--trilha); box-shadow: 0 0 12px var(--trilha); transition: background .6s, box-shadow .6s; }
+        .titulo { margin: 0; font: 800 clamp(24px, 3.4vw, 44px)/1 var(--display); letter-spacing: -.04em; text-transform: uppercase; }
+        .prototipo { font: 500 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .14em; color: var(--dim); }
+
+        /* botões dos sistemas: mesmos retângulos da abertura do portfólio */
+        .sistemas { display: flex; gap: 10px; }
+        .sistema-btn {
+            display: grid; gap: 4px; min-width: 170px; padding: 12px 16px; text-align: left;
+            border: 2px solid var(--red); border-radius: 0; background: rgba(0, 0, 0, .55); cursor: pointer;
+            transition: background .2s, box-shadow .2s, transform .15s;
+        }
+        .sistema-btn:hover { background: rgba(52, 20, 57, .7); }
+        .sistema-btn.ativo { background: var(--red); box-shadow: 5px 5px 0 var(--wine); }
+        .sistema-btn:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 var(--wine); }
+        .sistema-btn:focus-visible { outline: 2px solid var(--paper); outline-offset: 3px; }
+        .sb-k { font: 500 10px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--red-ink); }
+        .sistema-btn.ativo .sb-k { color: var(--paper); }
+        .sb-t { font: 700 14px/1.15 var(--display); letter-spacing: -.02em; text-transform: uppercase; }
+
+        /* ---------------- rótulos dos planetas ---------------- */
+        #rotulos { position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+        .rotulo {
+            position: absolute; top: 0; left: 0;
+            display: flex; align-items: center; padding: 0; border: 0; background: none; text-align: left; cursor: pointer;
+            opacity: 0; pointer-events: none; transition: opacity .35s var(--ease);
+            margin-top: -18px; /* centraliza a caixa na altura do planeta */
+        }
+        .rotulo.on { opacity: 1; pointer-events: auto; }
+        .r-linha { position: relative; width: 18px; height: 1px; flex: none; }
+        /* a linha vai do planeta até a caixa; quando a caixa foi afastada de outra, ela fica inclinada
+           (--len e --ang vêm do script) */
+        .r-linha::before {
+            content: ''; position: absolute; left: 0; top: var(--dy, 0px); height: 1px;
+            width: var(--len, 18px); transform: rotate(var(--ang, 0rad)); transform-origin: 0 50%;
+            background: rgba(229, 229, 229, .45); transition: background .3s;
+        }
+        .r-caixa {
+            display: grid; grid-template-columns: auto 1fr; column-gap: 8px; row-gap: 2px; align-items: baseline;
+            padding: 6px 10px 7px; border: 1px solid rgba(229, 229, 229, .16); background: rgba(10, 8, 18, .62);
+            backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+            transition: border-color .3s, background .3s, transform .3s var(--ease);
+        }
+        /* rótulo à esquerda do planeta: linha do lado direito da caixa */
+        .rotulo.esq { flex-direction: row-reverse; }
+        .rotulo.esq .r-linha::before { left: auto; right: 0; transform-origin: 100% 50%; }
+        .r-n { grid-row: span 2; font: 500 10px/1 var(--mono); color: var(--trilha); }
+        .r-nome { font: 700 12px/1.15 var(--display); letter-spacing: -.01em; white-space: nowrap; }
+        .r-qtd { font: 500 10px/1.2 var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); white-space: nowrap; }
+        .rotulo.vazio .r-nome { color: var(--muted); }
+        .rotulo.vazio .r-caixa { border-style: dashed; }
+        .rotulo.destaque .r-linha::before { background: var(--trilha); }
+        .rotulo.destaque .r-caixa { border-color: var(--trilha); background: rgba(52, 20, 57, .8); transform: translateX(2px); }
+        .rotulo:focus-visible .r-caixa { outline: 2px solid var(--paper); outline-offset: 2px; }
+
+        /* ---------------- legenda e dica ---------------- */
+        .rodape {
+            position: fixed; left: 0; right: 0; bottom: 0; z-index: 4;
+            display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+            padding: 18px clamp(16px, 4vw, 44px) 22px; pointer-events: none;
+            background: linear-gradient(0deg, rgba(7, 7, 12, .8), transparent);
+            transition: opacity .4s var(--ease);
+        }
+        body.com-foco .rodape { opacity: 0; }
+        .legenda { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0; padding: 0; list-style: none; font: 500 11px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+        .legenda li { display: inline-flex; align-items: center; gap: 8px; }
+        .leg-planeta { width: 10px; height: 10px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff, var(--red-ink) 60%, var(--wine)); }
+        .leg-lua { width: 5px; height: 5px; border-radius: 50%; background: #d6d0f0; box-shadow: 9px -3px 0 #d6d0f0; margin-right: 9px; }
+        .leg-vazio { width: 10px; height: 10px; border-radius: 50%; border: 1px dashed var(--muted); }
+        .dica { font: 500 11px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--dim); }
+        .dica-toque { display: none; }
+        @media (pointer: coarse) { .dica-mouse { display: none; } .dica-toque { display: inline; } }
+
+        /* ---------------- planeta em foco (o painel da matéria vem na próxima etapa) ---------------- */
+        .foco {
+            position: fixed; z-index: 6; left: 50%; bottom: 22px; transform: translate(-50%, 16px);
+            display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: center;
+            width: max-content; max-width: calc(100% - 32px);
+            padding: 14px 16px 14px 20px; border: 2px solid var(--red); background: rgba(0, 0, 0, .72);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            opacity: 0; transition: opacity .35s var(--ease), transform .35s var(--ease);
+        }
+        .foco.on { opacity: 1; transform: translate(-50%, 0); }
+        .foco-txt { display: grid; gap: 3px; }
+        .foco-k { font: 500 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .14em; color: var(--trilha); }
+        .foco-nome { font: 800 18px/1.1 var(--display); letter-spacing: -.02em; text-transform: uppercase; }
+        .foco-qtd { font: 500 11px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+        .foco-voltar {
+            display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px;
+            border: 2px solid var(--red); border-radius: 0; background: transparent; cursor: pointer;
+            font: 500 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .1em;
+        }
+        .foco-voltar:hover { background: var(--red); }
+        .foco-voltar kbd { padding: 2px 6px; border: 1px solid rgba(229, 229, 229, .25); font: inherit; color: var(--sand); }
+        @media (pointer: coarse) { .foco-voltar kbd { display: none; } }
+
+        /* entrada da interface */
+        .topo, .rodape { opacity: 0; transition: opacity 1s var(--ease) .6s; }
+        body.pronto .topo, body.pronto .rodape { opacity: 1; }
+        body.pronto.com-foco .rodape { opacity: 0; transition-delay: 0s; }
+
+        @media (max-width: 720px) {
+            .topo { padding-top: 16px; }
+            .sistemas { width: 100%; }
+            .sistema-btn { flex: 1; min-width: 0; padding: 10px 12px; }
+            .sb-t { font-size: 12px; }
+            .titulo { font-size: 22px; }
+            /* rótulos compactos no celular: número e nome (a quantidade aparece no foco) */
+            .r-caixa { padding: 4px 7px 5px; column-gap: 6px; }
+            .r-nome { font-size: 10px; }
+            .r-qtd { display: none; }
+            .r-n { grid-row: auto; font-size: 9px; }
+            .rotulo { margin-top: -11px; }
+            .r-linha { width: 10px; }
+            .rodape { padding-bottom: 16px; }
+            .legenda { font-size: 10px; gap: 6px 12px; }
+            .dica { width: 100%; }
+        }
+        @media (prefers-reduced-motion: reduce) { * { transition-duration: .01s !important; } }
+    </style>
+</head>
+<body>
+    <div id="palco" aria-hidden="true"></div>
+    <div class="vinheta" aria-hidden="true"></div>
+    <div id="rotulos"></div>
+
+    <header class="topo">
+        <div class="cabeca">
+            <a class="voltar-site" href="index.html">← Portfólio</a>
+            <span class="kicker" id="kicker-sistema">Sistema A · Base comum</span>
+            <h1 class="titulo" id="titulo-sistema">Matérias básicas</h1>
+            <span class="prototipo">Protótipo · sistemas solares</span>
+        </div>
+        <nav class="sistemas" aria-label="Escolher sistema solar">
+            <button class="sistema-btn ativo" type="button" data-sistema="basicas" aria-pressed="true">
+                <span class="sb-k">Sistema A · 1</span>
+                <span class="sb-t">Matérias básicas</span>
+            </button>
+            <button class="sistema-btn" type="button" data-sistema="tecnicas" aria-pressed="false">
+                <span class="sb-k">Sistema B · 2</span>
+                <span class="sb-t">Matérias técnicas</span>
+            </button>
+        </nav>
+    </header>
+
+    <footer class="rodape">
+        <ul class="legenda">
+            <li><i class="leg-planeta"></i>Planeta = matéria (tamanho = nº de trabalhos)</li>
+            <li><i class="leg-lua"></i>Uma lua por trabalho</li>
+            <li><i class="leg-vazio"></i>Apagado = em breve</li>
+        </ul>
+        <span class="dica"><span class="dica-mouse">Arraste para girar · role para aproximar · clique num planeta</span><span class="dica-toque">Arraste para girar · pinça para aproximar · toque num planeta</span></span>
+    </footer>
+
+    <div class="foco" id="foco" hidden role="status">
+        <div class="foco-txt">
+            <span class="foco-k"><span id="foco-n">01</span> · painel da matéria na próxima etapa</span>
+            <span class="foco-nome" id="foco-nome"></span>
+            <span class="foco-qtd" id="foco-qtd"></span>
+        </div>
+        <button class="foco-voltar" id="foco-voltar" type="button">Voltar ao sistema <kbd>Esc</kbd></button>
+    </div>
+
+    <!-- As matérias e trabalhos vêm do mesmo arquivo do portfólio -->
+    <script src="data/3ano.js"></script>
+    <!-- Gerado a partir de sistemas/src (veja sistemas/README.md) -->
+    <script src="sistemas/sistemas.js"></script>
+</body>
+</html>

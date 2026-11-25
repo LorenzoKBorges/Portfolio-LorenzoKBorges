@@ -1,0 +1,14 @@
+{
+  "name": "sistemas-solares",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistemas solares das matérias do portfólio (three.js).",
+  "scripts": {
+    "build": "esbuild src/main.js --bundle --minify --format=iife --target=es2019 --outfile=sistemas.js",
+    "dev": "esbuild src/main.js --bundle --sourcemap --format=iife --target=es2019 --outfile=sistemas.js --watch"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.0",
+    "three": "0.180.0"
+  }
+}

@@ -43,10 +43,9 @@ function renderHome() {
     }).join('');
   }
 
-  // Faixa animada com o nome das matérias
-  const nomes = todas.map((m) => m.nome);
-  const faixa = nomes.map((n, i) => `<span>${esc(n)}</span><b>${i % 2 ? '✦' : '●'}</b>`).join('');
-  $('#marquee').innerHTML = faixa + faixa;
+  // Faixa "Ver sistemas solares": um planeta por matéria e uma lua por trabalho (como em sistemas.html)
+  const luas = todas.reduce((s, m) => s + m.atividades.length, 0);
+  $('#vs-meta').textContent = `2 sistemas · ${plural(todas.length, 'planeta', 'planetas')} · ${plural(luas, 'lua', 'luas')}`;
 
   // Destaques: projetos que aparecem em mais de uma matéria
   const destaques = [
@@ -813,6 +812,7 @@ function podeRolarSozinho() {
   return CONSTRUIR &&
     MODO.atual === 'completo' &&
     !HTML.classList.contains('intro') &&
+    !HTML.classList.contains('de-volta') &&   // voltou dos sistemas solares: já viu o site
     !document.body.classList.contains('menu-open') &&
     $('#lightbox').hidden &&
     !document.hidden &&
@@ -915,5 +915,21 @@ route();
 addEventListener('hashchange', route);
 initIntro();
 if (!HTML.classList.contains('intro')) medirPlanta();
+
+// Sistemas solares: ao voltar de sistemas.html, o site abre direto (sem a abertura) e na faixa de onde a pessoa saiu
+$('#ver-sistemas').addEventListener('click', () => {
+  try { sessionStorage.setItem('lkb-sistemas', '1'); } catch { /* sem armazenamento: a abertura aparece de novo */ }
+});
+addEventListener('pageshow', (e) => {
+  // voltou pelo botão do navegador com a página guardada na memória: não precisa da marca
+  if (e.persisted) try { sessionStorage.removeItem('lkb-sistemas'); } catch { /* nada */ }
+});
+if (HTML.classList.contains('de-volta') && !location.hash.replace(/^#\/?/, '')) {
+  // a faixa fica um pouco acima do meio da tela, longe do menu fixo
+  requestAnimationFrame(() => {
+    const faixa = $('#ver-sistemas');
+    window.scrollTo({ top: faixa.getBoundingClientRect().top + scrollY - innerHeight * 0.38, behavior: 'instant' });
+  });
+}
 pararRolagem(); // começa a contagem de inatividade
 estrelaCadente();

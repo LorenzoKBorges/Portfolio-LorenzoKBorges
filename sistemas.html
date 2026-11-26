@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Sistemas solares · Lorenzo Kurrle Borges</title>
-    <meta name="description" content="Protótipo: as matérias do 3° ano como planetas de dois sistemas solares.">
+    <meta name="description" content="As matérias do 3° ano de Lorenzo Kurrle Borges como planetas de dois sistemas solares, com uma lua para cada trabalho.">
     <meta name="theme-color" content="#07070c">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        /* Protótipo dos sistemas solares. Mesmas cores e fontes do portfólio (style.css). */
+        /* Sistemas solares das matérias. Mesmas cores e fontes do portfólio (style.css). */
         :root {
             --paper: #E5E5E5; --sand: #E2C9AB; --red: #762B82; --red-ink: #B46CC2; --wine: #341439;
             --bg: #07070c; --muted: #A8A39B; --dim: #6B6862; --line: rgba(229, 229, 229, .12);
@@ -43,7 +43,7 @@
         .kicker { display: inline-flex; align-items: center; gap: 10px; font: 500 11px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .14em; color: var(--trilha); transition: color .6s; }
         .kicker::before { content: ''; width: 9px; height: 9px; background: var(--trilha); box-shadow: 0 0 12px var(--trilha); transition: background .6s, box-shadow .6s; }
         .titulo { margin: 0; font: 800 clamp(24px, 3.4vw, 44px)/1 var(--display); letter-spacing: -.04em; text-transform: uppercase; }
-        .prototipo { font: 500 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .14em; color: var(--dim); }
+        .assinatura { font: 500 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .14em; color: var(--dim); }
 
         /* botões dos sistemas: mesmos retângulos da abertura do portfólio */
         .sistemas { display: flex; gap: 10px; }
@@ -292,7 +292,7 @@
             .pa-filtro { flex: none; }
             .pa-lista { padding: 10px; }
             .pa-cab { gap: 10px; padding: 12px 10px; }
-            body.com-foco .topo .cabeca .prototipo, body.com-foco .topo .titulo, body.com-foco .topo .kicker { display: none; }
+            body.com-foco .topo .cabeca .assinatura, body.com-foco .topo .titulo, body.com-foco .topo .kicker { display: none; }
             body.com-foco .sistemas { display: none; }
             .dica-lua { max-width: 80vw; }
             .vistas { left: 16px; right: 16px; bottom: 96px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
@@ -314,7 +314,7 @@
             <a class="voltar-site" href="index.html">← Portfólio</a>
             <span class="kicker" id="kicker-sistema">Sistema A · Base comum</span>
             <h1 class="titulo" id="titulo-sistema">Matérias básicas</h1>
-            <span class="prototipo">Protótipo · sistemas solares</span>
+            <span class="assinatura">Lorenzo Kurrle Borges · 3° ano</span>
         </div>
         <nav class="sistemas" aria-label="Escolher sistema solar">
             <button class="sistema-btn ativo" type="button" data-sistema="basicas" aria-pressed="true">

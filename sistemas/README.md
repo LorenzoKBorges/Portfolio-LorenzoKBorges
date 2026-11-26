@@ -1,8 +1,10 @@
-# Sistemas solares (protótipo)
+# Sistemas solares
 
 As matérias do 3° ano como planetas de dois sistemas solares, em 3D (three.js).
-A página é a `sistemas.html`, na raiz do site. Ela ainda não aparece no portfólio: é o modelo
-para aprovar antes de ligar ao resto.
+A página é a `sistemas.html`, na raiz do site. No portfólio, a faixa roxa **Ver sistemas solares**
+(logo abaixo do topo, no lugar da antiga faixa com os nomes das matérias) leva até ela.
+Quem volta pelo "← Portfólio" (ou pelo botão de voltar do navegador) cai direto na faixa,
+sem a tela de abertura de novo.
 
 - **Sistema A:** matérias básicas, com sol cor de areia.
 - **Sistema B:** matérias técnicas, com sol roxo.
@@ -14,7 +16,10 @@ para aprovar antes de ligar ao resto.
 ## O que dá para fazer na página
 
 - Trocar de sistema pelos botões (ou teclas 1 e 2): a câmera viaja de um para o outro.
-- Arrastar para girar, rolar (ou pinçar) para aproximar.
+- Arrastar para girar (dá para ver de cima e por baixo do plano das órbitas), rolar (ou pinçar) para aproximar.
+- **Pontos de vista** (canto de baixo): Inclinado, De cima, Rasante e Por baixo levam a câmera
+  ao ângulo com um clique, no sistema inteiro ou em volta do planeta aberto. "Girar sozinho"
+  liga e desliga a rotação automática.
 - Passar o mouse num planeta: ele cresce, a órbita acende e tudo desacelera.
 - Clicar num planeta (ou no rótulo): a câmera vai até ele e abre o **painel da matéria**,
   à direita no computador e de baixo para cima no celular.

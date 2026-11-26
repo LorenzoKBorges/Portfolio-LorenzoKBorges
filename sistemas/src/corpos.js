@@ -1,141 +1,73 @@
 import * as THREE from 'three';
-import { aleatorio, texturaPlaneta, texturaAnel, texturaBrilho, texturaRaios } from './texturas.js';
+// Mesmo modelo de arte da animação do Big Bang: texturas, sprites e materiais vêm de lá
+import { texturaPlaneta } from '../../bigbang/src/texturas.js';
+import { sprite } from '../../bigbang/src/materiais.js';
+import { criarRng } from '../../bigbang/src/utils.js';
 
 const TAU = Math.PI * 2;
-const RUIDO_GLSL = `
-  float hash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
-  float ruido(vec3 x) {
-    vec3 i = floor(x); vec3 f = fract(x); f = f * f * (3.0 - 2.0 * f);
-    return mix(mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x), mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
-               mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x), mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z);
-  }
-  float fbm(vec3 p) { float s = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { s += a * ruido(p); p *= 2.02; a *= 0.5; } return s; }
-`;
 
-let brilhoCompartilhado = null;
-const brilho = () => brilhoCompartilhado || (brilhoCompartilhado = texturaBrilho());
+/** Brilho na borda do planeta (efeito Fresnel), igual ao do sistema solar do Big Bang. */
+function atmosfera(raio, cor) {
+  const u = { uCor: { value: new THREE.Color(cor) }, uInt: { value: 0.3 } };
+  const malha = new THREE.Mesh(
+    new THREE.SphereGeometry(raio * 1.07, 48, 32),
+    new THREE.ShaderMaterial({
+      uniforms: u,
+      vertexShader: /* glsl */ `
+        varying vec3 vN; varying vec3 vV;
+        void main() {
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          vN = normalize(normalMatrix * normal);
+          vV = normalize(-mv.xyz);
+          gl_Position = projectionMatrix * mv;
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform vec3 uCor; uniform float uInt;
+        varying vec3 vN; varying vec3 vV;
+        void main() {
+          float f = pow(1.0 - max(dot(normalize(vN), normalize(vV)), 0.0), 2.4);
+          gl_FragColor = vec4(uCor * f * uInt, 1.0);
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    })
+  );
+  return { malha, u };
+}
 
 // ------------------------------------------------------------------ estrela (sol do sistema)
 
+/** Sol como o do Big Bang: núcleo claro com luz própria, coroa, halo largo e raios em cruz. */
 export class Estrela {
-  constructor({ raio, cor, corBorda, semente }) {
+  constructor(tex, { raio, nucleo, coroa, halo, raios, luz }) {
     this.grupo = new THREE.Group();
     this.raio = raio;
-
-    // superfície fervendo (ruído animado), clara o bastante para o bloom pegar
-    this.mat = new THREE.ShaderMaterial({
-      uniforms: {
-        uTempo: { value: 0 },
-        uCor: { value: new THREE.Color(cor) },
-        uBorda: { value: new THREE.Color(corBorda) },
-      },
-      vertexShader: `
-        varying vec3 vP; varying vec3 vN;
-        void main() { vP = position; vN = normalize(normalMatrix * normal);
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-      fragmentShader: `
-        uniform float uTempo; uniform vec3 uCor; uniform vec3 uBorda;
-        varying vec3 vP; varying vec3 vN;
-        ${RUIDO_GLSL}
-        void main() {
-          vec3 p = normalize(vP) * 2.4;
-          float n = fbm(p + vec3(uTempo * 0.12, uTempo * 0.05, -uTempo * 0.08));
-          float m = fbm(p * 2.3 - vec3(uTempo * 0.2));
-          float t = smoothstep(0.25, 0.85, n * 0.7 + m * 0.3);
-          float borda = pow(1.0 - abs(vN.z), 1.6);
-          vec3 c = mix(uBorda, uCor, t);
-          c = mix(c, uBorda * 1.4, borda * 0.6);
-          gl_FragColor = vec4(c * 2.2, 1.0);
-        }`,
-    });
-    this.nucleo = new THREE.Mesh(new THREE.SphereGeometry(raio, 64, 48), this.mat);
-    this.grupo.add(this.nucleo);
-
-    // halo e coroa (sprites somando luz)
-    const halo = (escala, cor, opacidade, mapa) => {
-      const s = new THREE.Sprite(
-        new THREE.SpriteMaterial({ map: mapa, color: cor, transparent: true, opacity: opacidade, blending: THREE.AdditiveBlending, depthWrite: false })
-      );
-      s.scale.setScalar(raio * escala);
-      this.grupo.add(s);
-      return s;
-    };
-    this.halo1 = halo(5.5, corBorda, 0.85, brilho());
-    this.halo2 = halo(10, corBorda, 0.16, brilho());
-    this.coroa = halo(9, cor, 0.55, texturaRaios(semente));
-
-    // luz que ilumina os planetas (sem queda com a distância: todos ficam visíveis)
-    this.luz = new THREE.PointLight(new THREE.Color(cor).lerp(new THREE.Color('#ffffff'), 0.5), 3.2, 0, 0);
+    this.nucleo = new THREE.Mesh(new THREE.SphereGeometry(raio, 48, 32), new THREE.MeshBasicMaterial({ color: new THREE.Color(nucleo).multiplyScalar(1.8) }));
+    // tamanhos proporcionais aos do sol do Big Bang (raio 19: coroa 75, halo 210, raios 120)
+    this.coroa = sprite(tex.brilho, coroa, raio * 3.95, 0.55);
+    this.halo = sprite(tex.brilho, halo, raio * 11, 0.22);
+    this.raios = sprite(tex.flare, raios, raio * 6.3, 0.3);
+    this.grupo.add(this.nucleo, this.halo, this.coroa, this.raios);
+    this.luz = new THREE.PointLight(luz, 700, 0, 1.1);
     this.grupo.add(this.luz);
+    this.opacidades = [0.55, 0.22, 0.3];
   }
 
   atualizar(t) {
-    this.mat.uniforms.uTempo.value = t;
-    const pulso = 1 + Math.sin(t * 1.3) * 0.04 + Math.sin(t * 3.1) * 0.015;
-    this.halo1.scale.setScalar(this.raio * 5.5 * pulso);
-    this.coroa.material.rotation = t * 0.03;
-    this.coroa.scale.setScalar(this.raio * 9 * (1 + Math.sin(t * 0.8) * 0.05));
+    this.raios.material.rotation = t * 0.05;
+    this.coroa.scale.setScalar(this.raio * 3.95 * (1 + 0.03 * Math.sin(t * 2.3)));
   }
 
   /** 0..1: a estrela "acende" na entrada do sistema */
   set acender(k) {
     this.nucleo.scale.setScalar(Math.max(0.001, k));
-    this.halo1.material.opacity = 0.85 * k;
-    this.halo2.material.opacity = 0.16 * k;
-    this.coroa.material.opacity = 0.55 * k;
-    this.luz.intensity = 3.2 * k;
-  }
-}
-
-// ------------------------------------------------------------------ órbita (linha com rastro)
-
-export class Orbita {
-  constructor({ raio, cor, angulo0 }) {
-    const n = 360;
-    const pos = new Float32Array(n * 3);
-    const ang = new Float32Array(n);
-    for (let i = 0; i < n; i++) {
-      const a = i / n;
-      const th = angulo0 + a * TAU;
-      pos[i * 3] = Math.cos(th) * raio;
-      pos[i * 3 + 2] = Math.sin(th) * raio;
-      ang[i] = a;
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute('aAng', new THREE.BufferAttribute(ang, 1));
-    this.mat = new THREE.ShaderMaterial({
-      uniforms: {
-        uFase: { value: 0 },
-        uRevelar: { value: 0 },
-        uCor: { value: new THREE.Color(cor) },
-        uAlpha: { value: 0.55 },
-        uDestaque: { value: 0 },
-        uRaioOrbita: { value: raio },
-        uOculta: { value: 0 }, // raio em volta do planeta onde a linha some
-      },
-      vertexShader: `
-        attribute float aAng; varying float vAng;
-        void main() { vAng = aAng; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-      fragmentShader: `
-        uniform float uFase; uniform float uRevelar; uniform vec3 uCor; uniform float uAlpha; uniform float uDestaque;
-        uniform float uRaioOrbita; uniform float uOculta;
-        varying float vAng;
-        void main() {
-          if (vAng > uRevelar) discard;
-          float d = fract(uFase - vAng);          // distância atrás do planeta (0 = colado nele)
-          float rastro = exp(-d * 6.0);
-          float a = uAlpha * (0.16 + 0.84 * rastro) + uDestaque * 0.4;
-          // a linha some perto do planeta: o rastro parece sair de trás dele
-          float arco = min(d, 1.0 - d) * 6.2832 * uRaioOrbita;
-          a *= smoothstep(uOculta, uOculta * 1.8, arco);
-          gl_FragColor = vec4(uCor * (1.0 + rastro * 0.8 + uDestaque * 0.6), a);
-        }`,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-    });
-    this.linha = new THREE.LineLoop(geo, this.mat);
+    this.coroa.material.opacity = this.opacidades[0] * k;
+    this.halo.material.opacity = this.opacidades[1] * k;
+    this.raios.material.opacity = this.opacidades[2] * k;
+    this.luz.intensity = 700 * k;
   }
 }
 
@@ -146,115 +78,122 @@ export class Orbita {
  *  tamanho  = número de trabalhos
  *  luas     = uma lua para cada trabalho
  *  apagado  = matéria ainda sem trabalhos ("em breve")
+ *
+ * visual: { paleta, faixas, crateras, nuvens, atmosfera, forcaAtmosfera, anel, saturno }
+ *  (mesmos campos dos planetas do sistema solar do Big Bang; saturno = usa a textura do Saturno de lá)
  */
 export class Planeta {
-  constructor({ materia, indice, raioOrbita, visual, semente, velocidade }) {
+  constructor(tex, { materia, indice, raioOrbita, visual, semente, corOrbita }) {
     this.materia = materia;
     this.indice = indice;
     this.n = materia.atividades.length;
     this.vazio = this.n === 0;
-    this.raio = this.vazio ? 0.9 : 1.1 + 0.32 * this.n;
+    this.raio = Planeta.raioPara(this.n);
     this.raioOrbita = raioOrbita;
-    this.velocidade = velocidade;
-    const rnd = aleatorio(semente);
-    this.angulo0 = rnd() * TAU;
+    this.velocidade = 0;
+    const rand = criarRng(semente);
+    this.angulo0 = rand() * TAU;
     this.angulo = this.angulo0;
 
     // plano da órbita: um pouco inclinado, cada um para um lado
     this.plano = new THREE.Group();
-    this.plano.rotation.set((rnd() - 0.5) * 0.12, rnd() * TAU, (rnd() - 0.5) * 0.12);
+    this.plano.rotation.set((rand() - 0.5) * 0.1, rand() * TAU, (rand() - 0.5) * 0.1);
 
-    this.orbita = new Orbita({ raio: raioOrbita, cor: visual.orbita, angulo0: this.angulo0 });
-    this.orbita.mat.uniforms.uAlpha.value = this.vazio ? 0.28 : 0.55;
-    this.plano.add(this.orbita.linha);
+    // linha da órbita, como no Big Bang (fina, fraca, somando luz)
+    this.opacidadeOrbita = this.vazio ? 0.12 : 0.22;
+    this.matOrbita = new THREE.LineBasicMaterial({
+      color: new THREE.Color(corOrbita),
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const pts = [];
+    for (let i = 0; i < 256; i++) {
+      const a = (i / 256) * TAU;
+      pts.push(new THREE.Vector3(Math.cos(a) * raioOrbita, 0, Math.sin(a) * raioOrbita));
+    }
+    this.plano.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), this.matOrbita));
 
     // corpo
     this.corpo = new THREE.Group();
     this.plano.add(this.corpo);
     this.eixo = new THREE.Group();
-    this.eixo.rotation.z = (rnd() - 0.5) * 0.7; // inclinação do eixo
+    this.eixo.rotation.z = 0.15 + rand() * 0.35; // inclinação do eixo de rotação
     this.corpo.add(this.eixo);
 
-    const cores = this.vazio ? ['#2a2733', '#3b3746', '#565063'] : visual.cores;
-    this.matSuperficie = new THREE.MeshStandardMaterial({
-      map: texturaPlaneta({ tipo: visual.tipo, cores, semente: semente + 7 }),
-      roughness: 0.9,
+    const mapa = visual.saturno ? tex.planeta : texturaPlaneta({ semente: semente + 7, ...visual });
+    // brilho próprio leve com a própria textura: o lado da noite continua aparecendo (como no Big Bang)
+    this.matCorpo = new THREE.MeshStandardMaterial({
+      map: mapa,
+      emissiveMap: mapa,
+      emissive: new THREE.Color('#ffffff'),
+      emissiveIntensity: this.vazio ? 0.08 : 0.22,
+      roughness: 0.92,
       metalness: 0,
-      emissive: new THREE.Color(cores[1]),
-      emissiveIntensity: this.vazio ? 0.02 : 0.07,
-      transparent: this.vazio,
-      opacity: this.vazio ? 0.85 : 1,
     });
-    this.esfera = new THREE.Mesh(new THREE.SphereGeometry(this.raio, 48, 32), this.matSuperficie);
+    if (this.vazio) this.matCorpo.color.set('#8a8494'); // apagado: cores mais fracas
+    this.esfera = new THREE.Mesh(new THREE.SphereGeometry(this.raio, 64, 48), this.matCorpo);
     this.eixo.add(this.esfera);
 
-    // atmosfera: brilho na borda (fresnel)
-    this.matAtmosfera = new THREE.ShaderMaterial({
-      uniforms: { uCor: { value: new THREE.Color(this.vazio ? '#6b6478' : visual.atmosfera) }, uForca: { value: this.vazio ? 0.35 : 0.9 } },
-      vertexShader: `
-        varying vec3 vN; varying vec3 vV;
-        void main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz);
-          gl_Position = projectionMatrix * mv; }`,
-      fragmentShader: `
-        uniform vec3 uCor; uniform float uForca; varying vec3 vN; varying vec3 vV;
-        void main() { float f = pow(1.0 - max(dot(vN, vV), 0.0), 2.6); gl_FragColor = vec4(uCor * f * uForca, f * uForca); }`,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-    });
-    this.atmosfera = new THREE.Mesh(new THREE.SphereGeometry(this.raio * 1.14, 48, 32), this.matAtmosfera);
-    this.corpo.add(this.atmosfera);
+    this.atm = atmosfera(this.raio, visual.atmosfera);
+    this.forcaAtmosfera = (visual.forcaAtmosfera ?? 1) * (this.vazio ? 0.4 : 1);
+    this.corpo.add(this.atm.malha);
 
-    // anel
+    // anéis (textura dos anéis do Saturno do Big Bang)
     if (visual.anel && !this.vazio) {
-      const geo = new THREE.RingGeometry(this.raio * 1.45, this.raio * 2.3, 96, 1);
-      // u da textura vai de dentro para fora
+      const r0 = this.raio * 1.42;
+      const r1 = this.raio * 2.33;
+      const geo = new THREE.RingGeometry(r0, r1, 160, 1);
       const p = geo.attributes.position;
       const uv = geo.attributes.uv;
-      const v3 = new THREE.Vector3();
-      for (let i = 0; i < p.count; i++) {
-        v3.fromBufferAttribute(p, i);
-        uv.setXY(i, (v3.length() - this.raio * 1.45) / (this.raio * 0.85), 0.5);
-      }
+      for (let i = 0; i < p.count; i++) uv.setXY(i, (Math.hypot(p.getX(i), p.getY(i)) - r0) / (r1 - r0), 0.5);
       this.anel = new THREE.Mesh(
         geo,
         new THREE.MeshStandardMaterial({
-          map: texturaAnel(visual.anel, semente + 3),
+          map: tex.aneisPlaneta,
+          emissiveMap: tex.aneisPlaneta,
+          emissive: new THREE.Color('#ffffff'),
+          emissiveIntensity: 0.4,
           transparent: true,
           side: THREE.DoubleSide,
           depthWrite: false,
           roughness: 1,
-          emissive: new THREE.Color(visual.anel[1]),
-          emissiveIntensity: 0.15,
+          metalness: 0,
         })
       );
-      this.anel.rotation.x = -Math.PI / 2 + 0.35;
+      this.anel.rotation.x = -Math.PI / 2;
       this.eixo.add(this.anel);
     }
 
-    // luas: uma por trabalho
+    // luas: uma por trabalho (rochas irregulares, como as luas do Saturno do Big Bang)
     this.luas = [];
+    const cores = ['#c4b5d9', '#dccbe8', '#cbbfe0'];
     for (let k = 0; k < this.n; k++) {
-      const r = 0.2 + rnd() * 0.16;
-      const lua = new THREE.Mesh(
-        new THREE.SphereGeometry(r, 20, 14),
-        new THREE.MeshStandardMaterial({ color: visual.lua, roughness: 1, emissive: new THREE.Color(visual.lua), emissiveIntensity: 0.12 })
-      );
+      const geo = new THREE.IcosahedronGeometry(1.1 + rand() * 0.7, 3);
+      const pp = geo.attributes.position;
+      const v = new THREE.Vector3();
+      for (let i = 0; i < pp.count; i++) {
+        v.fromBufferAttribute(pp, i).multiplyScalar(0.92 + rand() * 0.12);
+        pp.setXYZ(i, v.x, v.y, v.z);
+      }
+      geo.computeVertexNormals();
+      const lua = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: cores[k % 3], roughness: 1, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0.05 }));
       const plano = new THREE.Group();
-      plano.rotation.set((rnd() - 0.5) * 1.1, rnd() * TAU, (rnd() - 0.5) * 0.6);
+      plano.rotation.set((rand() - 0.5) * 0.9, rand() * TAU, (rand() - 0.5) * 0.5);
       plano.add(lua);
       this.corpo.add(plano);
       this.luas.push({
         malha: lua,
-        distancia: this.raio * 1.7 + (k % 3) * 0.55 + rnd() * 0.25,
-        velocidade: (1.1 + rnd() * 0.7) * (k % 2 ? -1 : 1),
-        fase: rnd() * TAU,
+        distancia: this.raio * (this.anel ? 2.7 : 1.9) + (k % 3) * 2.6 + rand() * 1.2,
+        velocidade: (0.7 + rand() * 0.5) * (k % 2 ? -1 : 1),
+        fase: rand() * TAU,
       });
     }
 
     // área de clique maior que o planeta (fácil de acertar, inclusive no celular)
     this.alvo = new THREE.Mesh(
-      new THREE.SphereGeometry(Math.max(this.raio * 1.9, 2.4), 12, 8),
+      new THREE.SphereGeometry(Math.max(this.raio * 1.9, 9), 12, 8),
       new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, colorWrite: false })
     );
     this.alvo.userData.planeta = this;
@@ -262,8 +201,19 @@ export class Planeta {
 
     this.escala = 1;
     this.escalaAlvo = 1;
+    this.destaque = 0;
     this.entrada = 0; // 0..1: animação de nascimento
-    this.extensao = this.raio * 1.7 + 1.35; // raio ocupado com as luas (para espaçar as órbitas)
+    this.extensao = Planeta.extensaoPara(this.n, !!visual.anel);
+  }
+
+  /** tamanho pelo número de trabalhos (Júpiter do Big Bang tem raio 15) */
+  static raioPara(n) {
+    return n === 0 ? 3.2 : 4 + 1.6 * n;
+  }
+  /** raio ocupado pelo planeta com anéis e luas (para espaçar as órbitas) */
+  static extensaoPara(n, anel) {
+    const r = Planeta.raioPara(n);
+    return n === 0 ? r * 1.6 : Math.max(r * (anel ? 2.33 : 1.2), r * (anel ? 2.7 : 1.9) + 6.5);
   }
 
   /** posição no mundo (para a câmera seguir) */
@@ -271,7 +221,7 @@ export class Planeta {
     return this.corpo.getWorldPosition(out);
   }
 
-  atualizar(dt, t, ritmo) {
+  atualizar(dt, t, ritmo, apagarOrbita) {
     this.angulo += this.velocidade * dt * ritmo;
     // nascimento: sai de dentro do sol em espiral e chega na órbita
     const k = this.entrada;
@@ -281,20 +231,23 @@ export class Planeta {
     this.corpo.position.set(Math.cos(th) * r, 0, Math.sin(th) * r);
     this.corpo.visible = k > 0.001;
 
-    this.eixo.rotation.y += dt * 0.35 * ritmo;
+    this.esfera.rotation.y += dt * 0.3 * ritmo;
     this.escala += (this.escalaAlvo - this.escala) * (1 - Math.exp(-dt * 10));
-    this.eixo.scale.setScalar(this.escala * Math.min(1, k * 1.6));
-    this.atmosfera.scale.setScalar(this.escala * Math.min(1, k * 1.6));
+    const tam = this.escala * Math.min(1, k * 1.6);
+    this.eixo.scale.setScalar(tam);
+    this.atm.malha.scale.setScalar(tam);
+    // a atmosfera acende no hover e no foco (como os planetas do Big Bang quando a estrela passa perto)
+    this.atm.u.uInt.value = (0.22 + this.destaque * 0.5) * this.forcaAtmosfera;
 
     for (const l of this.luas) {
       const a = l.fase + t * l.velocidade * (0.4 + 0.6 * ritmo);
       const d = l.distancia * this.escala * Math.min(1, k * 1.4);
       l.malha.position.set(Math.cos(a) * d, 0, Math.sin(a) * d);
+      l.malha.scale.setScalar(Math.min(1, k * 1.4));
     }
 
-    const u = this.orbita.mat.uniforms;
-    u.uFase.value = (((this.angulo - this.angulo0) / TAU) % 1 + 1) % 1;
-    u.uOculta.value = this.raio * this.escala * 1.15 * Math.min(1, k * 1.6);
-    u.uRevelar.value = Math.min(1, k * 1.15);
+    // órbita aparece junto com o planeta; mais forte no destaque, mais fraca quando outro está em foco
+    const alvo = (this.opacidadeOrbita + this.destaque * 0.3) * (apagarOrbita ? 0.35 : 1) * Math.min(1, k * 1.5);
+    this.matOrbita.opacity += (alvo - this.matOrbita.opacity) * (1 - Math.exp(-dt * 6));
   }
 }

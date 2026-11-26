@@ -2,10 +2,10 @@
   "name": "sistemas-solares",
   "version": "1.0.0",
   "private": true,
-  "description": "Sistemas solares das matérias do portfólio (three.js).",
+  "description": "Sistemas solares das matérias do portfólio (three.js, mesmo modelo de arte da animação do Big Bang).",
   "scripts": {
-    "build": "esbuild src/main.js --bundle --minify --format=iife --target=es2019 --outfile=sistemas.js",
-    "dev": "esbuild src/main.js --bundle --sourcemap --format=iife --target=es2019 --outfile=sistemas.js --watch"
+    "build": "esbuild src/main.js --bundle --minify --format=iife --target=es2019 --alias:three=./node_modules/three --outfile=sistemas.js",
+    "dev": "esbuild src/main.js --bundle --sourcemap --format=iife --target=es2019 --alias:three=./node_modules/three --outfile=sistemas.js --watch"
   },
   "devDependencies": {
     "esbuild": "0.25.0",

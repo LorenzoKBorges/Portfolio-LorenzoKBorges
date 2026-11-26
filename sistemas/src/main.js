@@ -4,8 +4,12 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { Estrela, Planeta } from './corpos.js';
-import { aleatorio, texturaBrilho } from './texturas.js';
+// Mesmo modelo de arte da animação do Big Bang (pasta bigbang/src)
+import { criarTexturas } from '../../bigbang/src/texturas.js';
+import { globais } from '../../bigbang/src/materiais.js';
+import { Ceu } from '../../bigbang/src/universo.js';
 
 // ==================================================================
 // Sistemas solares das matérias
@@ -16,38 +20,55 @@ import { aleatorio, texturaBrilho } from './texturas.js';
 const reduzirMovimento = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const fraco = matchMedia('(pointer: coarse)').matches || Math.min(innerWidth, innerHeight) < 600;
 
-// Visual de cada planeta, na ordem das matérias em data/3ano.js
+// Cor final da imagem, igual à do Big Bang: escurecer, saturação e quanto puxa para o roxo
+const COR = { escurecer: 1.35, saturacao: 1.4, roxo: 1 };
+
+// Visual de cada planeta, na ordem das matérias em data/3ano.js.
+// Mesmos parâmetros dos planetas do sistema solar do Big Bang (src/sistema.js de lá).
 const VISUAL = {
   basicas: [
-    // Matemática · Linguagens · Humanas · Natureza
-    { tipo: 'rocha', cores: ['#5b4636', '#a8876a', '#e2c9ab', '#f3e6d4'], atmosfera: '#e2c9ab', orbita: '#e2c9ab', lua: '#d9cdbd' },
-    { tipo: 'gas', cores: ['#4a2340', '#9a4d7a', '#d68fb2', '#f4d6e6'], atmosfera: '#f0abfc', orbita: '#e7b6cf', lua: '#e4d3dc', anel: ['#b77a9a', '#f1d3e2', '#8c5a74'] },
-    { tipo: 'gelo', cores: ['#23304f', '#3f5d8c', '#8fb0d9', '#dfe9f6'], atmosfera: '#9fc3ff', orbita: '#b8c9e6', lua: '#d3dbe8' },
-    { tipo: 'gas', cores: ['#123b33', '#2f7a5f', '#7fc3a0', '#e3f2e4'], atmosfera: '#8ef0c2', orbita: '#a9dcc4', lua: '#d1e3da', anel: ['#5f9c84', '#cfeee0', '#3d6b5a'] },
+    // Matemática: como Marte (rochoso, rosado, crateras)
+    { paleta: ['#b4568e', '#d07aa8', '#9a3f78', '#e3a0c4', '#c06a9a'], crateras: 18, atmosfera: '#f9a8d4', forcaAtmosfera: 0.5 },
+    // Linguagens: como Vênus (nuvens claras)
+    { paleta: ['#e8d4f5', '#d6b8ee', '#f2e4fa', '#c9a2e6', '#ebd9f7'], nuvens: true, atmosfera: '#f5d0fe' },
+    // Humanas: como a Terra (oceanos e nuvens)
+    { paleta: ['#2f2f96', '#4a63c8', '#5f45b8', '#62b8d8', '#3a3aa8'], nuvens: true, atmosfera: '#7dd3fc' },
+    // Natureza: o Saturno do Big Bang (a que tem mais trabalhos)
+    { saturno: true, anel: true, atmosfera: '#c9a6ff', forcaAtmosfera: 1.6 },
   ],
   tecnicas: [
-    // Banco de Dados · Desenvolvimento · Modelagem · Implantação · Manutenção · Aplicativos · Testes · IoT
-    { tipo: 'rocha', cores: ['#1f1645', '#45348f', '#8a78e0', '#d8d0ff'], atmosfera: '#a99bff', orbita: '#b4a6ff', lua: '#d6d0f0' },
-    { tipo: 'gas', cores: ['#3a0f45', '#7a2a8c', '#c06bd4', '#f2d6fa'], atmosfera: '#e09bff', orbita: '#d9a6ec', lua: '#e3d4ea', anel: ['#9c5bb0', '#efd2f7', '#6a3a7a'] },
-    { tipo: 'gelo', cores: ['#162a45', '#2f5a8f', '#7ea9dd', '#e1ecfa'], atmosfera: '#8fc0ff', orbita: '#aac4e6', lua: '#d2dcea' },
-    { tipo: 'rocha', orbita: '#8a8496', cores: [], atmosfera: '', lua: '' },
-    { tipo: 'rocha', orbita: '#8a8496', cores: [], atmosfera: '', lua: '' },
-    { tipo: 'gas', cores: ['#40143a', '#8f3a7d', '#e58cc6', '#fbe3f2'], atmosfera: '#ff9fdc', orbita: '#eab0d5', lua: '#ecd6e3' },
-    { tipo: 'rocha', orbita: '#8a8496', cores: [], atmosfera: '', lua: '' },
-    { tipo: 'gas', cores: ['#2b1150', '#5b2fa0', '#a679f0', '#ece0ff'], atmosfera: '#b892ff', orbita: '#c3a8f5', lua: '#ddd2f2', anel: ['#7d5bc0', '#e6dcff', '#4d3a80'] },
+    // Banco de Dados: como Netuno
+    { paleta: ['#3b3bb0', '#5a5ad8', '#4848c4', '#7c8cf0', '#3a3aa8'], faixas: true, atmosfera: '#818cf8' },
+    // Desenvolvimento de Sistemas: como Júpiter
+    { paleta: ['#b04ad0', '#e07ae8', '#8f2fb0', '#f0a6f0', '#c25ad8', '#7c3aed'], faixas: true, atmosfera: '#f0abfc' },
+    // Modelagem de Sistemas: como Urano
+    { paleta: ['#a5d8f0', '#b7c0ff', '#9ad0ea', '#c9d4ff', '#a8b8f8'], faixas: true, atmosfera: '#a5f3fc' },
+    // Implantação (em breve): como Mercúrio
+    { paleta: ['#8a7aa0', '#a898c0', '#c4b6dc', '#9888b0', '#ddd2ee'], crateras: 40, atmosfera: '#c4b5fd', forcaAtmosfera: 0.3 },
+    // Manutenção (em breve): como Mercúrio, outro tom
+    { paleta: ['#7e7396', '#9b8fb4', '#b7aacd', '#8d80a6', '#d2c7e4'], crateras: 30, atmosfera: '#c4b5fd', forcaAtmosfera: 0.3 },
+    // Programação de Aplicativos: como Marte
+    { paleta: ['#b4568e', '#d07aa8', '#9a3f78', '#e3a0c4', '#c06a9a'], crateras: 12, atmosfera: '#f9a8d4', forcaAtmosfera: 0.5 },
+    // Testes (em breve): como Mercúrio, outro tom
+    { paleta: ['#8678a0', '#a294bc', '#bfb2d8', '#9284ac', '#d9cfee'], crateras: 34, atmosfera: '#c4b5fd', forcaAtmosfera: 0.3 },
+    // IoT: gasoso com anéis
+    { paleta: ['#7c3aed', '#a78bfa', '#6d28d9', '#c4b5fd', '#8b5cf6'], faixas: true, anel: true, atmosfera: '#c4b5fd' },
   ],
 };
-// visual neutro para quem não tiver um definido acima (ex.: matéria nova)
-const VISUAL_PADRAO = { tipo: 'rocha', cores: ['#2b2340', '#5d4d8a', '#a99bd6', '#e6e0f7'], atmosfera: '#b4a6ff', orbita: '#b4a6ff', lua: '#d6d0f0' };
+// visual neutro para matéria nova que ainda não tenha um definido acima
+const VISUAL_PADRAO = { paleta: ['#8a7aa0', '#a898c0', '#c4b6dc', '#9888b0', '#ddd2ee'], crateras: 20, atmosfera: '#c4b5fd' };
 
+// Escala igual à do sistema solar do Big Bang (sol de raio 19)
 const SISTEMAS = [
   {
     id: 'basicas',
     rotulo: 'Sistema A',
     nome: 'Base comum',
     titulo: 'Matérias básicas',
-    centro: new THREE.Vector3(-150, 0, 0),
-    estrela: { raio: 4.2, cor: '#fff3e0', corBorda: '#e2a86f', semente: 11 },
+    centro: new THREE.Vector3(-700, 0, 0),
+    // sol mais quente (areia, a cor das matérias básicas no portfólio)
+    estrela: { raio: 19, nucleo: '#fff1e6', coroa: '#f0c8b4', halo: '#b45a8c', raios: '#fff0e6', luz: '#ffe9dc' },
+    corOrbita: '#e9c9b4',
     corTrilha: '#E2C9AB',
   },
   {
@@ -55,8 +76,10 @@ const SISTEMAS = [
     rotulo: 'Sistema B',
     nome: 'Desenvolvimento de Sistemas',
     titulo: 'Matérias técnicas',
-    centro: new THREE.Vector3(150, 0, 0),
-    estrela: { raio: 4.6, cor: '#f3e8ff', corBorda: '#9b4dd6', semente: 23 },
+    centro: new THREE.Vector3(700, 0, 0),
+    // o sol roxo-branco do Big Bang
+    estrela: { raio: 19, nucleo: '#f1e4ff', coroa: '#d8b4fe', halo: '#7c3aed', raios: '#f3e8ff', luz: '#ead9ff' },
+    corOrbita: '#a78bfa',
     corTrilha: '#B46CC2',
   },
 ];
@@ -64,23 +87,64 @@ const SISTEMAS = [
 // ------------------------------------------------------------------ cena
 
 const palco = document.getElementById('palco');
-const renderer = new THREE.WebGLRenderer({ antialias: !fraco, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, fraco ? 1.5 : 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
-renderer.setClearColor('#07070c');
+renderer.toneMappingExposure = 1.05;
+renderer.setClearColor('#050009');
 palco.appendChild(renderer.domElement);
 
 const cena = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 4000);
-cena.add(new THREE.AmbientLight('#8c7fb8', 0.16));
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.5, 9000);
+cena.add(new THREE.AmbientLight('#9b7be0', 0.2));
 
-const composer = new EffectComposer(renderer);
+// Pós-processamento do Big Bang. A diferença: a imagem é desenhada com antisserrilhado (MSAA),
+// para as linhas das órbitas e as bordas dos planetas ficarem lisas.
+const alvoRender = new THREE.WebGLRenderTarget(innerWidth * renderer.getPixelRatio(), innerHeight * renderer.getPixelRatio(), {
+  type: THREE.HalfFloatType,
+  samples: 4,
+});
+const composer = new EffectComposer(renderer, alvoRender);
 composer.addPass(new RenderPass(cena, camera));
-const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.8, 0.4, 0.62);
+const VERT_TELA = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
+// limita o brilho antes do bloom: pontos muito estourados viram "quadrados" no desfoque
+composer.addPass(
+  new ShaderPass({
+    uniforms: { tDiffuse: { value: null }, uMax: { value: 2.4 } },
+    vertexShader: VERT_TELA,
+    fragmentShader: `
+      uniform sampler2D tDiffuse; uniform float uMax; varying vec2 vUv;
+      void main() {
+        vec3 c = texture2D(tDiffuse, vUv).rgb;
+        float m = max(max(c.r, c.g), c.b);
+        if (m > uMax) c *= uMax / m;
+        gl_FragColor = vec4(c, 1.0);
+      }`,
+  })
+);
+// (limiar mais alto que o do Big Bang: só o sol, os anéis e as atmosferas brilham; as estrelas
+//  do fundo ficam de fora, senão o desfoque transforma cada uma num quadradinho apagado)
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.8, 0.45, 0.5);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
+// cor final: mais escuro e com roxos mais fortes (como no Big Bang)
+composer.addPass(
+  new ShaderPass({
+    uniforms: { tDiffuse: { value: null }, uGama: { value: COR.escurecer }, uSat: { value: COR.saturacao }, uRoxo: { value: COR.roxo } },
+    vertexShader: VERT_TELA,
+    fragmentShader: `
+      uniform sampler2D tDiffuse; uniform float uGama; uniform float uSat; uniform float uRoxo; varying vec2 vUv;
+      void main() {
+        vec3 c = texture2D(tDiffuse, vUv).rgb;
+        float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+        c = max(mix(vec3(l), c, uSat), 0.0);
+        c *= mix(vec3(1.0 + 0.04 * uRoxo, 1.0 - 0.2 * uRoxo, 1.0 + 0.08 * uRoxo), vec3(1.0), smoothstep(0.6, 1.0, l));
+        c = pow(c, vec3(uGama));
+        gl_FragColor = vec4(c, 1.0);
+      }`,
+  })
+);
 
 const controles = new OrbitControls(camera, renderer.domElement);
 controles.enableDamping = true;
@@ -93,63 +157,16 @@ controles.maxPolarAngle = 1.45; // não deixa passar por baixo do plano
 controles.autoRotate = !reduzirMovimento;
 controles.autoRotateSpeed = 0.25;
 
-// ------------------------------------------------------------------ céu
+// ------------------------------------------------------------------ céu e texturas (do Big Bang)
 
-function criarCeu() {
-  const rnd = aleatorio(2026);
-  const n = fraco ? 2200 : 4200;
-  const pos = new Float32Array(n * 3);
-  const cor = new Float32Array(n * 3);
-  const tam = new Float32Array(n);
-  const paleta = [new THREE.Color('#ffffff'), new THREE.Color('#d9c8ff'), new THREE.Color('#e2c9ab'), new THREE.Color('#b8a2ff')];
-  for (let i = 0; i < n; i++) {
-    const u = rnd() * 2 - 1;
-    const th = rnd() * Math.PI * 2;
-    const r = 1400 + rnd() * 600;
-    const s = Math.sqrt(1 - u * u);
-    pos.set([Math.cos(th) * s * r, u * r, Math.sin(th) * s * r], i * 3);
-    const c = paleta[rnd() < 0.7 ? 0 : 1 + Math.floor(rnd() * 3)];
-    cor.set([c.r, c.g, c.b], i * 3);
-    tam[i] = rnd() < 0.94 ? 1 + rnd() * 1.6 : 2.6 + rnd() * 2;
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute('color', new THREE.BufferAttribute(cor, 3));
-  geo.setAttribute('aTam', new THREE.BufferAttribute(tam, 1));
-  const mat = new THREE.ShaderMaterial({
-    uniforms: { uTempo: { value: 0 }, uPixel: { value: renderer.getPixelRatio() } },
-    vertexShader: `
-      attribute float aTam; varying vec3 vCor; varying float vPisca; uniform float uTempo; uniform float uPixel;
-      void main() { vCor = color; vPisca = 0.65 + 0.35 * sin(uTempo * (0.6 + fract(position.x) * 2.0) + position.y);
-        gl_PointSize = aTam * uPixel; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-    fragmentShader: `
-      varying vec3 vCor; varying float vPisca;
-      void main() { float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.0, d);
-        gl_FragColor = vec4(vCor * vPisca, a * vPisca); }`,
-    vertexColors: true,
-    transparent: true,
-    depthWrite: false,
-  });
-  const pontos = new THREE.Points(geo, mat);
-  cena.add(pontos);
-
-  // nuvens de nebulosa bem fracas, para dar profundidade
-  const tex = texturaBrilho();
-  const nuvens = [
-    ['#4b1f6e', -500, 120, -900, 900],
-    ['#2c1452', 700, -160, -1000, 1100],
-    ['#5a2a4e', 100, 300, 1100, 900],
-    ['#1f2a5a', -900, -200, 400, 800],
-  ];
-  for (const [c, x, y, z, s] of nuvens) {
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: c, transparent: true, opacity: 0.2, depthWrite: false, blending: THREE.AdditiveBlending }));
-    sp.position.set(x, y, z);
-    sp.scale.setScalar(s);
-    cena.add(sp);
-  }
-  return mat;
+const tex = criarTexturas();
+const ceu = new Ceu(cena, tex, fraco ? 0.45 : 1);
+// tamanho dos pontos (estrelas) em pixels depende da altura da tela e do campo de visão
+function ajustarEscalaPixel() {
+  const h = renderer.getDrawingBufferSize(new THREE.Vector2()).y;
+  globais.uEscalaPixel.value = h / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
 }
-const matCeu = criarCeu();
+ajustarEscalaPixel();
 
 // ------------------------------------------------------------------ sistemas
 
@@ -162,25 +179,22 @@ for (const s of SISTEMAS) {
   s.grupo.rotation.z = s.id === 'basicas' ? 0.06 : -0.05;
   cena.add(s.grupo);
 
-  s.estrela = new Estrela(s.estrela);
+  s.estrela = new Estrela(tex, s.estrela);
   s.grupo.add(s.estrela.grupo);
   s.estrela.acender = 0;
 
-  // órbitas espaçadas pelo tamanho real de cada planeta (com as luas), para ninguém encostar
+  // órbitas espaçadas pelo tamanho real de cada planeta (com anéis e luas), para ninguém encostar
   s.planetas = [];
-  let raio = s.estrela.raio * 2.6;
+  let raio = s.estrela.raio * 2.3;
   const materias = dados[s.id] || [];
   materias.forEach((m, i) => {
     const visual = (VISUAL[s.id] && VISUAL[s.id][i]) || VISUAL_PADRAO;
     const semente = (s.id === 'basicas' ? 100 : 500) + i * 37;
-    // primeiro cria para saber o tamanho, depois ajusta o raio da órbita
-    const tmpN = m.atividades.length;
-    const tmpRaio = tmpN === 0 ? 0.9 : 1.1 + 0.32 * tmpN;
-    const ext = tmpRaio * 1.7 + 1.35;
-    raio += i === 0 ? ext : ext + 1.6;
-    const p = new Planeta({ materia: m, indice: i, raioOrbita: raio, visual, semente, velocidade: 0 });
+    const ext = Planeta.extensaoPara(m.atividades.length, !!visual.anel);
+    raio += i === 0 ? ext : ext + 6;
+    const p = new Planeta(tex, { materia: m, indice: i, raioOrbita: raio, visual, semente, corOrbita: s.corOrbita });
     // mais perto do sol = mais rápido (como as órbitas de verdade, mas mais animado)
-    p.velocidade = (reduzirMovimento ? 0.45 : 1) * 13.4 / Math.pow(raio, 1.2);
+    p.velocidade = ((reduzirMovimento ? 0.45 : 1) * 73) / Math.pow(raio, 1.2);
     p.sistema = s;
     raio += ext;
     s.grupo.add(p.plano);
@@ -320,7 +334,7 @@ function mostrarSistema(s, primeiraVez = false) {
     alvoVisao(s, controles.target);
     viajar({ destinoPos: destino, destinoAlvo: alvo, duracao: 3.4, limites });
   } else {
-    viajar({ destinoPos: destino, destinoAlvo: alvo, duracao: anterior ? 2.6 : 1.6, arco: anterior ? 70 : 0, limites });
+    viajar({ destinoPos: destino, destinoAlvo: alvo, duracao: anterior ? 2.6 : 1.6, arco: anterior ? 320 : 0, limites });
   }
   if (!s.formado) {
     s.formado = true;
@@ -339,7 +353,7 @@ function focar(p) {
   ui.foco.hidden = false;
   requestAnimationFrame(() => ui.foco.classList.add('on'));
   // mais longe quando a tela está em pé (o campo de visão na horizontal é estreito)
-  const dist = Math.max(p.raio * 7.5, 11) * (camera.aspect < 1 ? 1.7 : 1);
+  const dist = Math.max(p.raio * (p.anel ? 7 : 6.5), 42) * (camera.aspect < 1 ? 1.7 : 1);
   const desvio = new THREE.Vector3();
   const lado = new THREE.Vector3();
   // câmera ao lado do planeta, um pouco para o lado do sol e acima: vê a face iluminada
@@ -429,6 +443,7 @@ function redimensionar() {
   renderer.setSize(innerWidth, innerHeight);
   composer.setSize(innerWidth, innerHeight);
   bloom.resolution.set(innerWidth, innerHeight);
+  ajustarEscalaPixel();
   if (atual && !focado && !viagem) {
     controles.maxDistance = distanciaVisao(atual) * 1.9;
   }
@@ -455,7 +470,7 @@ function quadro(agora) {
   const ritmoAlvo = focado ? 0.12 : sobre ? 0.25 : 1;
   ritmo += (ritmoAlvo - ritmo) * (1 - Math.exp(-dt * 4));
 
-  matCeu.uniforms.uTempo.value = relogio;
+  globais.camPos.copy(camera.position);
 
   for (const s of SISTEMAS) {
     // nascimento do sistema: o sol acende e os planetas saem dele, um de cada vez
@@ -469,13 +484,9 @@ function quadro(agora) {
       p.entrada = s.formado ? Math.min(1, Math.max(0, (s.entrada - ini) / 0.38)) : 0;
       const destaque = p === focado || p === sobre;
       p.escalaAlvo = destaque ? 1.18 : 1;
-      p.orbita.mat.uniforms.uDestaque.value += ((destaque ? 1 : 0) - p.orbita.mat.uniforms.uDestaque.value) * (1 - Math.exp(-dt * 8));
+      p.destaque += ((destaque ? 1 : 0) - p.destaque) * (1 - Math.exp(-dt * 8));
       // no foco, as outras órbitas ficam mais apagadas
-      const base = p.vazio ? 0.28 : 0.55;
-      const alvoAlpha = focado && p !== focado ? base * 0.35 : base;
-      const u = p.orbita.mat.uniforms.uAlpha;
-      u.value += (alvoAlpha - u.value) * (1 - Math.exp(-dt * 5));
-      p.atualizar(dt, relogio, ritmo);
+      p.atualizar(dt, relogio, ritmo, !!focado && p !== focado);
     });
   }
 
@@ -492,6 +503,8 @@ function quadro(agora) {
 
   posicionarRotulos();
 
+  // céu do Big Bang: acompanha a câmera (as estrelas ficam sempre ao fundo)
+  ceu.atualizar(relogio, camera, 1);
   composer.render();
 }
 

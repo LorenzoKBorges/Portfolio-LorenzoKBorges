@@ -478,21 +478,76 @@ html.lite .nav-mode-dot { background: var(--sand); }
   80% { transform: translate(40px, 40px); }
 }
 
-/* ----------------------------------------------------------------- marquee */
+/* ------------------------------------------------- faixa "ver sistemas solares" */
+/* Mesmo lugar e inclinação da antiga faixa com os nomes das matérias; agora leva a sistemas.html */
 
-.marquee {
-  overflow: hidden; border-block: 1px solid var(--line);
+.ver-sistemas {
+  display: block; position: relative; overflow: hidden;
+  border-block: 1px solid var(--line);
   background: var(--red); color: var(--paper);
   transform: rotate(-1.5deg) scale(1.03); margin: 20px 0 0;
+  transition: background .35s var(--ease);
 }
-.marquee-track {
-  display: flex; align-items: center; gap: 28px; width: max-content;
-  padding: 18px 0; animation: marquee 60s linear infinite;
-  font: 700 clamp(20px, 2.6vw, 34px)/1 var(--display); text-transform: uppercase; letter-spacing: -.02em; white-space: nowrap;
+.ver-sistemas:hover { background: #9236A1; }
+.ver-sistemas:focus-visible { outline: 2px solid var(--paper); outline-offset: -6px; }
+.vs-dentro {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: clamp(16px, 3vw, 40px);
+  max-width: var(--max); margin: 0 auto; padding: 16px var(--gutter);
 }
-.marquee-track b { font-size: .6em; }
-.marquee:hover .marquee-track { animation-play-state: paused; }
-@keyframes marquee { to { transform: translateX(-50%); } }
+.vs-texto { display: grid; gap: 6px; min-width: 0; }
+.vs-k, .vs-meta { font: 500 11px/1.2 var(--mono); text-transform: uppercase; letter-spacing: .14em; }
+.vs-k { color: var(--sand); }
+.vs-meta { color: rgba(229, 229, 229, .75); }
+.vs-t { font: 700 clamp(24px, 3.6vw, 48px)/1 var(--display); text-transform: uppercase; letter-spacing: -.02em; }
+.vs-seta {
+  display: grid; place-items: center; width: clamp(48px, 5vw, 64px); aspect-ratio: 1;
+  border: 2px solid var(--paper); font: 700 clamp(20px, 2.2vw, 28px)/1 var(--display);
+  transition: background .3s var(--ease), color .3s var(--ease), transform .3s var(--ease);
+}
+.ver-sistemas:hover .vs-seta { background: var(--paper); color: var(--red); transform: translateX(4px); }
+
+/* mini sistema solar: órbitas em 3D (plano inclinado), planetas sempre de frente */
+.vs-orrery { width: clamp(92px, 11vw, 140px); aspect-ratio: 2 / 1; perspective: 600px; display: grid; place-items: center; }
+.vs-plano { position: relative; width: 100%; aspect-ratio: 1; transform: rotateX(68deg); transform-style: preserve-3d; }
+.vs-sol, .vs-orbita { position: absolute; top: 50%; left: 50%; border-radius: 50%; }
+.vs-sol {
+  width: 16%; aspect-ratio: 1; margin: -8% 0 0 -8%; background: var(--sand);
+  box-shadow: 0 0 14px 4px rgba(226, 201, 171, .7); transform: rotateX(-68deg);
+  transition: box-shadow .35s var(--ease);
+}
+.ver-sistemas:hover .vs-sol { box-shadow: 0 0 22px 8px rgba(226, 201, 171, .85); }
+.vs-orbita { border: 1px solid rgba(229, 229, 229, .4); transform-style: preserve-3d; animation: vs-gira linear infinite; }
+.vs-orbita b {
+  position: absolute; top: 50%; left: 100%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%;
+  background: var(--paper); transform: rotateX(-68deg);
+  /* desfaz o giro da órbita, para o planeta ficar sempre de frente (mesmo tempo da órbita) */
+  animation: vs-frente linear infinite; animation-duration: inherit; animation-delay: inherit;
+}
+.vs-o1 { width: 44%; height: 44%; margin: -22% 0 0 -22%; animation-duration: 5s; transform: rotateZ(200deg); }
+.vs-o2 { width: 70%; height: 70%; margin: -35% 0 0 -35%; animation-duration: 9s; animation-delay: -3s; transform: rotateZ(100deg); }
+.vs-o3 { width: 98%; height: 98%; margin: -49% 0 0 -49%; animation-duration: 15s; animation-delay: -9s; transform: rotateZ(-20deg); }
+.vs-o1 b { width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; background: var(--sand); transform: rotateZ(-200deg) rotateX(-68deg); }
+.vs-o2 b { transform: rotateZ(-100deg) rotateX(-68deg); }
+.vs-o3 b { background: #341439; box-shadow: 0 0 0 2px var(--paper); transform: rotateZ(20deg) rotateX(-68deg); }
+@keyframes vs-gira { from { transform: rotateZ(0); } to { transform: rotateZ(360deg); } } /* parado (modo leve): cada planeta num ponto da órbita */
+@keyframes vs-frente { from { transform: rotateZ(0) rotateX(-68deg); } to { transform: rotateZ(-360deg) rotateX(-68deg); } }
+html.lite .vs-orbita, html.lite .vs-orbita b { animation: none; }
+@media (prefers-reduced-motion: reduce) { .vs-orbita, .vs-orbita b { animation: none; } }
+
+@media (max-width: 640px) {
+  .vs-dentro { gap: 14px; padding-block: 14px; }
+  .vs-orrery { width: 54px; }
+  .vs-k { display: none; }
+  .vs-t { font-size: 22px; }
+  .vs-meta { font-size: 10px; letter-spacing: .04em; }
+  .vs-seta { width: 44px; }
+  .vs-orbita b { width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; }
+  .vs-o1 b { width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; }
+}
+@media (max-width: 380px) {
+  .vs-t { font-size: 19px; }
+  .vs-meta { font-size: 9px; letter-spacing: 0; }
+}
 
 /* ----------------------------------------------------------------- seções */
 

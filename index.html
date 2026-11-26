@@ -16,7 +16,7 @@
         data-agents="9"
         data-max-wait="10"
         data-colors="#762B82,#E2C9AB,#E5E5E5,#9236A1,#C9A27E,#5E2269"
-        data-exclude=".marquee, .hero-cursors, .bg-fx, .modal"
+        data-exclude=".ver-sistemas, .hero-cursors, .bg-fx, .modal"
         data-label-agents="construtores"
         data-label-layers="camadas"
         data-label-skip="Mostrar tudo"></script>
@@ -29,8 +29,12 @@
             var semAnimacao = matchMedia('(prefers-reduced-motion: reduce)').matches || /[?&]nobanna/.test(location.search);
             var salvo = null;
             try { salvo = localStorage.getItem('lkb-modo'); } catch (e) {}
+            // Voltando dos sistemas solares (sistemas.html): o site já aparece pronto, sem abertura de novo
+            var volta = false;
+            try { volta = sessionStorage.getItem('lkb-sistemas') === '1'; sessionStorage.removeItem('lkb-sistemas'); } catch (e) {}
+            if (volta) html.classList.add('de-volta');
             if (semAnimacao || salvo === 'leve') html.classList.add('lite');
-            if (!semAnimacao) html.classList.add('intro');
+            if (!semAnimacao && !volta) html.classList.add('intro');
         })();
     </script>
 
@@ -135,9 +139,25 @@
             <dl class="hero-stats" id="hero-stats"></dl>
         </section>
 
-        <div class="marquee" aria-hidden="true">
-            <div class="marquee-track" id="marquee"></div>
-        </div>
+        <!-- Faixa que leva às matérias em 3D: cada matéria é um planeta (sistemas.html) -->
+        <a class="ver-sistemas" id="ver-sistemas" href="sistemas.html">
+            <span class="vs-dentro">
+                <span class="vs-orrery" aria-hidden="true">
+                    <span class="vs-plano">
+                        <i class="vs-sol"></i>
+                        <i class="vs-orbita vs-o1"><b></b></i>
+                        <i class="vs-orbita vs-o2"><b></b></i>
+                        <i class="vs-orbita vs-o3"><b></b></i>
+                    </span>
+                </span>
+                <span class="vs-texto">
+                    <span class="vs-k">Modo 3D · as matérias viram planetas</span>
+                    <span class="vs-t">Ver sistemas solares</span>
+                    <span class="vs-meta" id="vs-meta"></span>
+                </span>
+                <span class="vs-seta" aria-hidden="true">→</span>
+            </span>
+        </a>
 
         <section class="section" id="atividades">
             <div class="section-head">

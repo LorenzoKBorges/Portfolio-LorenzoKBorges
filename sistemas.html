@@ -113,6 +113,30 @@
         .dica-toque { display: none; }
         @media (pointer: coarse) { .dica-mouse { display: none; } .dica-toque { display: inline; } }
 
+        /* ---------------- pontos de vista da câmera ---------------- */
+        .vistas {
+            position: fixed; z-index: 5; left: clamp(16px, 4vw, 44px); bottom: 70px;
+            display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+            transition: bottom .4s var(--ease), opacity .4s var(--ease);
+        }
+        body.com-foco .vistas { bottom: 24px; }
+        .vistas-rotulo { margin-right: 6px; font: 500 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .14em; color: var(--dim); }
+        .vista-btn {
+            padding: 8px 11px; border: 1px solid rgba(229, 229, 229, .2); border-radius: 0; background: rgba(8, 5, 16, .6);
+            font: 500 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); cursor: pointer;
+            transition: color .2s, border-color .2s, background .2s;
+        }
+        .vista-btn:hover { color: var(--paper); border-color: var(--paper); }
+        .vista-btn.ativo { color: var(--paper); border-color: var(--red); background: var(--red); }
+        .vista-btn:focus-visible { outline: 2px solid var(--paper); outline-offset: 2px; }
+        .vista-sep { width: 1px; height: 22px; margin: 0 4px; background: rgba(229, 229, 229, .18); }
+        .vistas { opacity: 0; }
+        body.pronto .vistas { opacity: 1; transition: bottom .4s var(--ease), opacity 1s var(--ease) .6s; }
+
+        /* material que não pode ser embutido (prévia): link no lugar */
+        .pa-embed-link { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 16px; border: 1px dashed rgba(229, 229, 229, .25); color: var(--paper); font: 500 12px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+        .pa-embed-link:hover { border-color: var(--trilha); background: rgba(118, 43, 130, .25); }
+
         /* ---------------- painel da matéria (abre ao clicar num planeta) ---------------- */
         .painel {
             position: fixed; z-index: 6; top: 100px; right: 24px; bottom: 24px;
@@ -271,6 +295,11 @@
             body.com-foco .topo .cabeca .prototipo, body.com-foco .topo .titulo, body.com-foco .topo .kicker { display: none; }
             body.com-foco .sistemas { display: none; }
             .dica-lua { max-width: 80vw; }
+            .vistas { left: 16px; right: 16px; bottom: 96px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+            .vistas-rotulo { display: none; }
+            .vista-btn { flex: none; padding: 8px 9px; font-size: 10px; }
+            .v-lg { display: none; }
+            body.com-foco .vistas { display: none; }
         }
         @media (prefers-reduced-motion: reduce) { * { transition-duration: .01s !important; } }
     </style>
@@ -307,6 +336,17 @@
         </ul>
         <span class="dica"><span class="dica-mouse">Arraste para girar · role para aproximar · clique num planeta</span><span class="dica-toque">Arraste para girar · pinça para aproximar · toque num planeta</span></span>
     </footer>
+
+    <!-- Pontos de vista: ângulos da câmera com um clique (arrastar também gira) -->
+    <div class="vistas" role="group" aria-label="Ponto de vista da câmera">
+        <span class="vistas-rotulo">Ponto de vista</span>
+        <button class="vista-btn ativo" type="button" data-vista="inclinado" aria-pressed="true">Inclinado</button>
+        <button class="vista-btn" type="button" data-vista="cima" aria-pressed="false"><span class="v-lg">De </span>cima</button>
+        <button class="vista-btn" type="button" data-vista="rasante" aria-pressed="false">Rasante</button>
+        <button class="vista-btn" type="button" data-vista="baixo" aria-pressed="false"><span class="v-lg">Por </span>baixo</button>
+        <i class="vista-sep" aria-hidden="true"></i>
+        <button class="vista-btn" type="button" id="girar-sozinho" aria-pressed="true"><span aria-hidden="true">↻</span> Girar<span class="v-lg"> sozinho</span></button>
+    </div>
 
     <!-- Linha do planeta (ou da lua do trabalho em destaque) até o painel -->
     <svg class="linha-painel" id="linha-painel" aria-hidden="true"><path d=""></path><circle r="3"></circle><circle r="2.5"></circle></svg>

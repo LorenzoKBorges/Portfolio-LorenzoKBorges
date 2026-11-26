@@ -9,6 +9,12 @@ function midiaHTML(m) {
   if (m.tipo === 'img') {
     return `<button class="pa-img" type="button" data-zoom="${esc(m.src)}" aria-label="Ampliar imagem"><img src="${esc(m.src)}" alt="${esc(m.alt || '')}" loading="lazy"></button>`;
   }
+  // onde não dá para embutir outros sites (a prévia), o material vira um link
+  if (window.SEM_IFRAMES) {
+    const href = m.src.replace('?embed', '').replace('youtube.com/embed/', 'youtube.com/watch?v=').replace('/preview', '/edit');
+    const origem = /canva/.test(m.src) ? 'Canva' : /youtu/.test(m.src) ? 'YouTube' : 'Google Docs';
+    return `<a class="pa-embed-link" href="${esc(href)}" target="_blank" rel="noopener"><span>Abrir o material no ${origem}</span><span>↗</span></a>`;
+  }
   // iframes (Canva, YouTube, Google Docs) só carregam quando o cartão abre
   const ratio = m.ratio || (m.tipo === 'doc' ? '3/4' : '16/9');
   return `<div class="pa-embed" style="aspect-ratio:${esc(ratio)}" data-src="${esc(m.src)}"></div>`;

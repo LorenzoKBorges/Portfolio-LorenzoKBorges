@@ -153,9 +153,13 @@ controles.dampingFactor = 0.06;
 controles.enablePan = false;
 controles.rotateSpeed = 0.55;
 controles.zoomSpeed = 0.7;
-controles.minPolarAngle = 0.15;
-controles.maxPolarAngle = 1.45; // não deixa passar por baixo do plano
-controles.autoRotate = !reduzirMovimento;
+// dá para girar a câmera em volta de tudo: de cima até um pouco por baixo do plano das órbitas.
+// Com um planeta aberto não chega tão perto dos polos (lá a textura da esfera se fecha num ponto).
+const POLAR_SISTEMA = [0.02, 2.2];
+const POLAR_PLANETA = [0.55, 2.3];
+[controles.minPolarAngle, controles.maxPolarAngle] = POLAR_SISTEMA;
+let girarSozinho = !reduzirMovimento; // botão "Girar sozinho"
+controles.autoRotate = girarSozinho;
 controles.autoRotateSpeed = 0.25;
 
 // ------------------------------------------------------------------ céu e texturas (do Big Bang)
@@ -231,13 +235,21 @@ for (const p of todosPlanetas) {
 
 const TAU = Math.PI * 2;
 // Celular em pé: vê o sistema mais de cima, para ele ocupar a altura da tela
-const elevacaoVisao = () => (camera.aspect < 1 ? 1.05 : 0.6);
+// Pontos de vista (botões): elevação da câmera em radianos, acima (+) ou abaixo (-) do plano das órbitas
+const VISTAS = {
+  inclinado: () => (camera.aspect < 1 ? 1.05 : 0.6), // celular em pé: mais de cima, para ocupar a altura da tela
+  cima: () => 1.5,
+  rasante: () => 0.12,
+  baixo: () => -0.5,
+};
+let vistaAtual = 'inclinado';
+const elevacaoVisao = () => VISTAS[vistaAtual]();
 // distância para o sistema caber inteiro na tela, com margem para a interface do topo e do rodapé
 function distanciaVisao(s, elevacao = elevacaoVisao()) {
   const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
   const tanH = tanV * camera.aspect;
   const R = s.raioTotal;
-  return Math.max(R * 1.6, (R * 1.15) / tanH, (R * (Math.sin(elevacao) + 0.32)) / tanV);
+  return Math.max(R * 1.6, (R * 1.15) / tanH, (R * (Math.abs(Math.sin(elevacao)) + 0.32)) / tanV);
 }
 function posicaoVisao(s, out, azimute = 0.55, elevacao = elevacaoVisao()) {
   const d = distanciaVisao(s, elevacao);
@@ -256,11 +268,14 @@ function alvoVisao(s, out, azimute = 0.55) {
 let viagem = null;
 const suave = (x) => x * x * x * (x * (x * 6 - 15) + 10);
 // (durante a viagem o zoom fica sem limites; os limites do destino valem na chegada)
-function viajar({ destinoPos, destinoAlvo, duracao, arco = 0, limites, aoChegar }) {
+function viajar({ destinoPos, destinoAlvo, duracao, arco = 0, limites, polar = POLAR_SISTEMA, aoChegar }) {
   controles.minDistance = 0;
   controles.maxDistance = Infinity;
+  controles.minPolarAngle = 0;
+  controles.maxPolarAngle = Math.PI;
   viagem = {
     limites,
+    polar,
     t: 0,
     duracao: reduzirMovimento ? Math.min(duracao, 0.8) : duracao,
     deP: camera.position.clone(),
@@ -288,6 +303,7 @@ function passoViagem(dt) {
   if (k >= 1) {
     const fim = viagem.aoChegar;
     if (viagem.limites) [controles.minDistance, controles.maxDistance] = viagem.limites;
+    [controles.minPolarAngle, controles.maxPolarAngle] = viagem.polar;
     viagem = null;
     controles.enabled = true;
     if (fim) fim();
@@ -387,6 +403,7 @@ function focar(p) {
     destinoAlvo,
     duracao: 1.6,
     limites: [p.raio * 2.5, dist * 3],
+    polar: POLAR_PLANETA,
     aoChegar: () => p.posicaoMundo(posFocoAnterior),
   });
 }
@@ -397,7 +414,7 @@ function desfocar(voltarCamera = true) {
   focado = null;
   document.body.classList.remove('com-foco');
   painel.fechar();
-  controles.autoRotate = !reduzirMovimento;
+  controles.autoRotate = girarSozinho;
   if (voltarCamera && atual) {
     viajar({
       destinoPos: (out) => posicaoVisao(atual, out),
@@ -406,6 +423,58 @@ function desfocar(voltarCamera = true) {
       limites: [atual.raioTotal * 0.35, distanciaVisao(atual) * 1.9],
     });
   }
+}
+
+// ------------------------------------------------------------------ pontos de vista
+
+// Leva a câmera para o ponto de vista escolhido, mantendo o lado de onde ela olha.
+// Com um planeta aberto, gira em volta dele (na mesma distância); senão, enquadra o sistema inteiro.
+const vRel = new THREE.Vector3();
+function aplicarVista(nome) {
+  if (!VISTAS[nome] || viagem) return;
+  vistaAtual = nome;
+  document.querySelectorAll('[data-vista]').forEach((b) => {
+    const on = b.dataset.vista === nome;
+    b.classList.toggle('ativo', on);
+    b.setAttribute('aria-pressed', String(on));
+  });
+  vRel.copy(camera.position).sub(controles.target);
+  const azimute = Math.atan2(vRel.x, vRel.z);
+  let elev = elevacaoVisao();
+  if (focado) {
+    const p = focado;
+    const d = vRel.length();
+    elev = Math.min(elev, Math.PI / 2 - POLAR_PLANETA[0]);
+    const dir = new THREE.Vector3(Math.sin(azimute) * Math.cos(elev), Math.sin(elev), Math.cos(azimute) * Math.cos(elev));
+    viajar({
+      destinoPos: (out) => p.posicaoMundo(out).addScaledVector(dir, d),
+      destinoAlvo: (out) => p.posicaoMundo(out),
+      duracao: 1.3,
+      limites: [controles.minDistance, controles.maxDistance],
+      polar: POLAR_PLANETA,
+      aoChegar: () => p.posicaoMundo(posFocoAnterior),
+    });
+  } else if (atual) {
+    const s = atual;
+    viajar({
+      destinoPos: (out) => posicaoVisao(s, out, azimute, elev),
+      destinoAlvo: (out) => alvoVisao(s, out, azimute),
+      duracao: 1.5,
+      limites: [s.raioTotal * 0.35, distanciaVisao(s) * 1.9],
+    });
+  }
+}
+document.querySelectorAll('[data-vista]').forEach((b) => b.addEventListener('click', () => aplicarVista(b.dataset.vista)));
+const botaoGirar = document.getElementById('girar-sozinho');
+if (botaoGirar) {
+  botaoGirar.setAttribute('aria-pressed', String(girarSozinho));
+  botaoGirar.addEventListener('click', () => {
+    girarSozinho = !girarSozinho;
+    botaoGirar.setAttribute('aria-pressed', String(girarSozinho));
+    botaoGirar.classList.toggle('ativo', girarSozinho);
+    if (!focado) controles.autoRotate = girarSozinho;
+  });
+  botaoGirar.classList.toggle('ativo', girarSozinho);
 }
 
 ui.botoes.forEach((b) => b.addEventListener('click', () => {

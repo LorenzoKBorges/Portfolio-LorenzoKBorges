@@ -183,7 +183,20 @@ export class Planeta {
       plano.rotation.set((rand() - 0.5) * 0.9, rand() * TAU, (rand() - 0.5) * 0.5);
       plano.add(lua);
       this.corpo.add(plano);
+      // brilho em volta da lua quando o trabalho dela está em destaque no painel
+      const brilhoLua = sprite(tex.brilho, '#e9d5ff', 7, 0);
+      lua.add(brilhoLua);
+      // área de clique da lua (maior que ela)
+      const alvoLua = new THREE.Mesh(
+        new THREE.SphereGeometry(3.6, 10, 8),
+        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, colorWrite: false })
+      );
+      alvoLua.userData = { planeta: this, lua: k };
+      lua.add(alvoLua);
       this.luas.push({
+        brilho: brilhoLua,
+        alvo: alvoLua,
+        luz: 0,
         malha: lua,
         distancia: this.raio * (this.anel ? 2.7 : 1.9) + (k % 3) * 2.6 + rand() * 1.2,
         velocidade: (0.7 + rand() * 0.5) * (k % 2 ? -1 : 1),
@@ -202,6 +215,7 @@ export class Planeta {
     this.escala = 1;
     this.escalaAlvo = 1;
     this.destaque = 0;
+    this.luaEmDestaque = null; // índice da lua (trabalho) em destaque no painel
     this.entrada = 0; // 0..1: animação de nascimento
     this.extensao = Planeta.extensaoPara(this.n, !!visual.anel);
   }
@@ -219,6 +233,11 @@ export class Planeta {
   /** posição no mundo (para a câmera seguir) */
   posicaoMundo(out) {
     return this.corpo.getWorldPosition(out);
+  }
+
+  /** posição da lua k no mundo (para a linha que liga a lua ao painel) */
+  posicaoLua(k, out) {
+    return this.luas[k] ? this.luas[k].malha.getWorldPosition(out) : this.posicaoMundo(out);
   }
 
   atualizar(dt, t, ritmo, apagarOrbita) {
@@ -239,11 +258,19 @@ export class Planeta {
     // a atmosfera acende no hover e no foco (como os planetas do Big Bang quando a estrela passa perto)
     this.atm.u.uInt.value = (0.22 + this.destaque * 0.5) * this.forcaAtmosfera;
 
+    // com um trabalho em destaque, as luas quase param (para a lua dele não fugir da vista)
+    const ritmoLuas = this.luaEmDestaque !== null ? 0.04 : 0.4 + 0.6 * ritmo;
     for (const l of this.luas) {
-      const a = l.fase + t * l.velocidade * (0.4 + 0.6 * ritmo);
+      l.fase += dt * l.velocidade * ritmoLuas;
+      const a = l.fase;
       const d = l.distancia * this.escala * Math.min(1, k * 1.4);
       l.malha.position.set(Math.cos(a) * d, 0, Math.sin(a) * d);
-      l.malha.scale.setScalar(Math.min(1, k * 1.4));
+      // a lua do trabalho em destaque cresce e brilha
+      const alvoLuz = this.luaEmDestaque === this.luas.indexOf(l) ? 1 : 0;
+      l.luz += (alvoLuz - l.luz) * (1 - Math.exp(-dt * 8));
+      l.malha.scale.setScalar(Math.min(1, k * 1.4) * (1 + l.luz * 0.9));
+      l.brilho.material.opacity = l.luz * 0.95;
+      l.malha.material.emissiveIntensity = 0.05 + l.luz * 0.5;
     }
 
     // órbita aparece junto com o planeta; mais forte no destaque, mais fraca quando outro está em foco

@@ -6,6 +6,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { Estrela, Planeta } from './corpos.js';
+import { Painel } from './painel.js';
 // Mesmo modelo de arte da animação do Big Bang (pasta bigbang/src)
 import { criarTexturas } from '../../bigbang/src/texturas.js';
 import { globais } from '../../bigbang/src/materiais.js';
@@ -299,12 +300,27 @@ const ui = {
   botoes: [...document.querySelectorAll('[data-sistema]')],
   titulo: document.getElementById('titulo-sistema'),
   kicker: document.getElementById('kicker-sistema'),
-  foco: document.getElementById('foco'),
-  focoNome: document.getElementById('foco-nome'),
-  focoQtd: document.getElementById('foco-qtd'),
-  focoN: document.getElementById('foco-n'),
-  voltar: document.getElementById('foco-voltar'),
+  linha: document.getElementById('linha-painel'),
+  dica: document.getElementById('dica-lua'),
+  lightbox: document.getElementById('lightbox'),
 };
+
+// Painel da matéria (o que aparece ao clicar num planeta)
+const painel = new Painel(document.getElementById('painel'), {
+  focarLua: (k) => { if (focado) focado.luaEmDestaque = k; },
+  selecionarLua: (k) => { if (focado) focado.luaEmDestaque = k; },
+  irPara: (p) => focar(p),
+  fechar: () => desfocar(),
+});
+const celular = () => innerWidth <= 720;
+// quanto a cena anda para o lado (ou para cima) para o planeta não ficar embaixo do painel
+function deslocamentoPainel() {
+  if (!focado) return [0, 0];
+  // (no celular, com um trabalho aberto, o painel cresce e o planeta sobe mais)
+  if (celular()) return [0, innerHeight * (painel.aberto !== null ? 0.4 : 0.31)];
+  const largura = Math.min(560, innerWidth * 0.42);
+  return [(largura + 28) / 2, 0];
+}
 
 let atual = null; // sistema na tela
 let focado = null; // planeta clicado
@@ -345,15 +361,15 @@ function mostrarSistema(s, primeiraVez = false) {
 function focar(p) {
   if (!p || p === focado) return;
   if (p.sistema !== atual) return;
+  if (focado) focado.luaEmDestaque = null;
   focado = p;
   document.body.classList.add('com-foco');
-  ui.focoN.textContent = pad(p.indice + 1);
-  ui.focoNome.textContent = p.materia.nome;
-  ui.focoQtd.textContent = p.vazio ? 'Em breve' : `${p.n} ${p.n === 1 ? 'trabalho' : 'trabalhos'} · ${p.n} ${p.n === 1 ? 'lua' : 'luas'}`;
-  ui.foco.hidden = false;
-  requestAnimationFrame(() => ui.foco.classList.add('on'));
+  const lista = p.sistema.planetas;
+  const i = lista.indexOf(p);
+  painel.abrir(p, p.sistema, [lista[(i - 1 + lista.length) % lista.length], lista[(i + 1) % lista.length]]);
   // mais longe quando a tela está em pé (o campo de visão na horizontal é estreito)
-  const dist = Math.max(p.raio * (p.anel ? 7 : 6.5), 42) * (camera.aspect < 1 ? 1.7 : 1);
+  // e um pouco mais longe com o painel aberto, para as luas caberem na área livre
+  const dist = Math.max(p.raio * (p.anel ? 7.6 : 7.2), 46) * (camera.aspect < 1 ? 1.9 : 1);
   const desvio = new THREE.Vector3();
   const lado = new THREE.Vector3();
   // câmera ao lado do planeta, um pouco para o lado do sol e acima: vê a face iluminada
@@ -377,10 +393,10 @@ function focar(p) {
 
 function desfocar(voltarCamera = true) {
   if (!focado) return;
+  focado.luaEmDestaque = null;
   focado = null;
   document.body.classList.remove('com-foco');
-  ui.foco.classList.remove('on');
-  setTimeout(() => { if (!focado) ui.foco.hidden = true; }, 300);
+  painel.fechar();
   controles.autoRotate = !reduzirMovimento;
   if (voltarCamera && atual) {
     viajar({
@@ -396,12 +412,38 @@ ui.botoes.forEach((b) => b.addEventListener('click', () => {
   const s = SISTEMAS.find((x) => x.id === b.dataset.sistema);
   if (s && s !== atual) mostrarSistema(s);
 }));
-ui.voltar.addEventListener('click', () => desfocar());
 addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') desfocar();
+  if (e.key === 'Escape') {
+    if (!ui.lightbox.hidden) fecharLightbox();
+    else desfocar();
+    return;
+  }
+  // (teclas de atalho só fora de campos e botões do painel)
+  if (e.target.closest && e.target.closest('#painel')) return;
   if (e.key === '1') mostrarSistema(SISTEMAS[0]);
   if (e.key === '2') mostrarSistema(SISTEMAS[1]);
+  if (focado && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+    const lista = focado.sistema.planetas;
+    const i = lista.indexOf(focado) + (e.key === 'ArrowRight' ? 1 : -1);
+    focar(lista[(i + lista.length) % lista.length]);
+  }
 });
+
+// imagens dos trabalhos abrem grandes
+document.addEventListener('click', (e) => {
+  const z = e.target.closest('[data-zoom]');
+  if (z) {
+    ui.lightbox.querySelector('img').src = z.dataset.zoom;
+    ui.lightbox.hidden = false;
+    requestAnimationFrame(() => ui.lightbox.classList.add('on'));
+    return;
+  }
+  if (e.target.closest('#lightbox')) fecharLightbox();
+});
+function fecharLightbox() {
+  ui.lightbox.classList.remove('on');
+  setTimeout(() => { ui.lightbox.hidden = true; }, 250);
+}
 
 // ------------------------------------------------------------------ mouse / toque
 
@@ -424,6 +466,9 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
 renderer.domElement.addEventListener('pointerup', () => {
   inicioToque = null;
   if (arrastou) return; // foi um arrasto para girar, não um clique
+  // com um planeta aberto, clicar numa lua dele abre o trabalho dela no painel
+  const l = luaSobPonteiro();
+  if (l !== null) { painel.abrirCartao(l, true); return; }
   const p = planetaSobPonteiro();
   if (p) focar(p);
 });
@@ -433,6 +478,12 @@ function planetaSobPonteiro() {
   raycaster.setFromCamera(ponteiro, camera);
   const hit = raycaster.intersectObjects(alvosClique(), false)[0];
   return hit ? hit.object.userData.planeta : null;
+}
+function luaSobPonteiro() {
+  if (!focado || !focado.luas.length || viagem) return null;
+  raycaster.setFromCamera(ponteiro, camera);
+  const hit = raycaster.intersectObjects(focado.luas.map((l) => l.alvo), false)[0];
+  return hit ? hit.object.userData.lua : null;
 }
 
 // ------------------------------------------------------------------ tela
@@ -453,6 +504,8 @@ addEventListener('resize', redimensionar);
 // ------------------------------------------------------------------ quadro a quadro
 
 let relogio = 0;
+let luaSobre = null; // lua (trabalho) com o mouse em cima, no planeta aberto
+const desloc = [0, 0];
 const posFocoAnterior = new THREE.Vector3();
 const vSegue = new THREE.Vector3();
 let ultimo = performance.now();
@@ -464,9 +517,22 @@ function quadro(agora) {
   ultimo = agora;
   relogio += dt;
 
-  // hover (no canvas ou no rótulo)
-  sobre = sobreRotulo || (ponteiroDentro && !viagem && !inicioToque ? planetaSobPonteiro() : null);
-  renderer.domElement.style.cursor = sobre ? 'pointer' : '';
+  // hover (no canvas ou no rótulo); com um planeta aberto, as luas dele também respondem
+  luaSobre = ponteiroDentro && !inicioToque ? luaSobPonteiro() : null;
+  sobre = sobreRotulo || (ponteiroDentro && !viagem && !inicioToque && luaSobre === null ? planetaSobPonteiro() : null);
+  if (sobre === focado) sobre = null;
+  renderer.domElement.style.cursor = sobre || luaSobre !== null ? 'pointer' : '';
+  if (focado) focado.luaEmDestaque = luaSobre ?? painel.sobre ?? painel.aberto;
+
+  // a cena anda para o lado (ou para cima) para o planeta aberto ficar na área livre ao lado do painel
+  const [alvoDx, alvoDy] = deslocamentoPainel();
+  desloc[0] += (alvoDx - desloc[0]) * (1 - Math.exp(-dt * 4));
+  desloc[1] += (alvoDy - desloc[1]) * (1 - Math.exp(-dt * 4));
+  if (Math.abs(desloc[0]) < 0.5 && Math.abs(desloc[1]) < 0.5) {
+    if (camera.view && camera.view.enabled) camera.clearViewOffset();
+  } else {
+    camera.setViewOffset(innerWidth, innerHeight, desloc[0], desloc[1], innerWidth, innerHeight);
+  }
   const ritmoAlvo = focado ? 0.12 : sobre ? 0.25 : 1;
   ritmo += (ritmoAlvo - ritmo) * (1 - Math.exp(-dt * 4));
 
@@ -498,10 +564,12 @@ function quadro(agora) {
     camera.position.add(vSegue);
     controles.target.add(vSegue);
     focado.posicaoMundo(posFocoAnterior);
+    mostrarLuaEmDestaque(dt);
   }
   controles.update();
 
   posicionarRotulos();
+  desenharLinhaPainel();
 
   // céu do Big Bang: acompanha a câmera (as estrelas ficam sempre ao fundo)
   ceu.atualizar(relogio, camera, 1);
@@ -518,7 +586,8 @@ function posicionarRotulos() {
   const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
   for (const p of todosPlanetas) {
     const el = p.rotulo;
-    const visivel = p.sistema === atual && p.entrada > 0.85 && (!focado || p === focado) && !viagem;
+    // (com um planeta aberto, o nome dele está no painel: os rótulos somem)
+    const visivel = p.sistema === atual && p.entrada > 0.85 && !focado && !viagem;
     p.posicaoMundo(vTela);
     vCam.copy(vTela).project(camera);
     const naFrente = vCam.z < 1 && Math.abs(vCam.x) < 1.15 && Math.abs(vCam.y) < 1.15;
@@ -571,6 +640,90 @@ function posicionarRotulos() {
     c.el.style.setProperty('--ang', `${(c.esq ? Math.atan2(dy, vao) : Math.atan2(-dy, vao)).toFixed(3)}rad`);
     c.el.style.transform = `translate(${c.x.toFixed(1)}px, ${c.y.toFixed(1)}px)`;
   }
+}
+
+// ------------------------------------------------------------------ lua em destaque à vista
+
+// Quando um trabalho está em destaque, a câmera gira devagar em volta do planeta até a lua dele
+// ficar à vista: um pouco à direita do planeta e virada para a câmera (do lado do painel,
+// sem ficar embaixo dele). Quem estiver girando com o mouse tem prioridade.
+const vLua = new THREE.Vector3();
+const vCamRel = new THREE.Vector3();
+const vDir = new THREE.Vector3();
+const vDesejo = new THREE.Vector3();
+const EIXO_Y = new THREE.Vector3(0, 1, 0);
+function mostrarLuaEmDestaque(dt) {
+  const k = focado.luaEmDestaque;
+  if (k === null || !focado.luas[k] || inicioToque) return;
+  focado.posicaoLua(k, vLua).sub(controles.target).setY(0);
+  vCamRel.copy(camera.position).sub(controles.target);
+  const camHoriz = vDir.copy(vCamRel).setY(0);
+  if (vLua.lengthSq() < 1e-4 || camHoriz.lengthSq() < 1e-4) return;
+  vLua.normalize();
+  camHoriz.normalize();
+  // direita da tela, no plano horizontal
+  const direita = vDesejo.setFromMatrixColumn(camera.matrixWorld, 0).setY(0).normalize();
+  // (no celular a lua vai para a frente do planeta: não há painel ao lado)
+  const desejo = direita.multiplyScalar(celular() ? 0.3 : 0.5).addScaledVector(camHoriz, 0.9).normalize();
+  // ângulo (em volta do eixo vertical) que leva a direção desejada até a lua
+  const ang = Math.atan2(desejo.clone().cross(vLua).y, desejo.dot(vLua));
+  if (Math.abs(ang) < 0.01) return;
+  const passo = ang * (1 - Math.exp(-dt * 3));
+  vCamRel.applyAxisAngle(EIXO_Y, passo);
+  camera.position.copy(controles.target).add(vCamRel);
+}
+
+// ------------------------------------------------------------------ linha até o painel
+
+// A linha do desenho: sai do planeta aberto (ou da lua do trabalho em destaque) e chega no painel.
+// Perto da lua aparece o nome do trabalho dela.
+const vLinha = new THREE.Vector3();
+function paraTela(v) {
+  vCam.copy(v).project(camera);
+  return { x: (vCam.x * 0.5 + 0.5) * innerWidth, y: (-vCam.y * 0.5 + 0.5) * innerHeight, frente: vCam.z < 1 };
+}
+function desenharLinhaPainel() {
+  const linha = ui.linha;
+  const ativo = focado && !viagem && !celular() && document.getElementById('painel').classList.contains('on');
+  linha.classList.toggle('on', !!ativo);
+  // (no celular o nome da lua não aparece: o trabalho já está aberto no painel, e não há espaço livre em cima)
+  const kDica = focado && !viagem && !celular() ? (luaSobre ?? painel.sobre ?? painel.aberto) : null;
+  // nome do trabalho perto da lua
+  if (focado && kDica !== null && focado.luas[kDica]) {
+    const t = paraTela(focado.posicaoLua(kDica, vLinha));
+    if (t.frente) {
+      const texto = `Lua ${pad(kDica + 1)} · ${focado.materia.atividades[kDica].titulo}`;
+      if (ui.dica.textContent !== texto) ui.dica.textContent = texto;
+      // centralizado em cima da lua, mas sempre dentro da tela
+      const l = ui.dica.offsetWidth;
+      // (não passa por baixo do painel)
+      const limite = document.getElementById('painel').classList.contains('on') ? document.getElementById('painel').getBoundingClientRect().left - 12 : innerWidth - 8;
+      const x = Math.min(Math.max(t.x - l / 2, 8), limite - l);
+      ui.dica.style.transform = `translate(${x.toFixed(1)}px, ${(t.y - 16).toFixed(1)}px) translateY(-100%)`;
+      ui.dica.classList.add('on');
+    } else ui.dica.classList.remove('on');
+  } else ui.dica.classList.remove('on');
+  if (!ativo) return;
+
+  const a = painel.ancora();
+  let origem;
+  if (a.lua !== null && focado.luas[a.lua]) {
+    origem = paraTela(focado.posicaoLua(a.lua, vLinha));
+  } else {
+    // borda do planeta virada para o painel
+    origem = paraTela(focado.posicaoMundo(vLinha));
+    const distCam = camera.position.distanceTo(vLinha);
+    const raioTela = ((focado.raio * focado.escala) / (distCam * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)))) * (innerHeight / 2);
+    origem.x += raioTela * 1.05;
+  }
+  // um cotovelo: anda na horizontal e depois vai até o painel
+  const meioX = origem.x + (a.x - origem.x) * 0.55;
+  linha.querySelector('path').setAttribute('d', `M${origem.x.toFixed(1)},${origem.y.toFixed(1)} L${meioX.toFixed(1)},${origem.y.toFixed(1)} L${(a.x - 10).toFixed(1)},${a.y.toFixed(1)} L${a.x.toFixed(1)},${a.y.toFixed(1)}`);
+  const [c0, c1] = linha.querySelectorAll('circle');
+  c0.setAttribute('cx', origem.x.toFixed(1));
+  c0.setAttribute('cy', origem.y.toFixed(1));
+  c1.setAttribute('cx', a.x.toFixed(1));
+  c1.setAttribute('cy', a.y.toFixed(1));
 }
 
 // ------------------------------------------------------------------ começo

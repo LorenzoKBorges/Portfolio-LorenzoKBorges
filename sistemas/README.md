@@ -16,8 +16,15 @@ para aprovar antes de ligar ao resto.
 - Trocar de sistema pelos botões (ou teclas 1 e 2): a câmera viaja de um para o outro.
 - Arrastar para girar, rolar (ou pinçar) para aproximar.
 - Passar o mouse num planeta: ele cresce, a órbita acende e tudo desacelera.
-- Clicar num planeta (ou no rótulo): a câmera vai até ele e o acompanha na órbita.
-  Esc ou "Voltar ao sistema" volta para a visão geral.
+- Clicar num planeta (ou no rótulo): a câmera vai até ele e abre o **painel da matéria**,
+  à direita no computador e de baixo para cima no celular.
+- **No painel**, cada trabalho é um cartão numerado. O número é o da lua do planeta:
+  - passar o mouse num cartão acende a lua dele, mostra o nome perto dela e leva a linha até ela;
+  - clicar numa lua abre o trabalho dela no painel;
+  - abrir um cartão mostra o material (Canva, vídeo e documentos só carregam nessa hora),
+    o texto, os links, as habilidades e o código;
+  - as submatérias viram filtros, e "Anterior" e "Próxima" (ou as setas ← →) trocam de matéria.
+- Esc ou ✕ fecha o painel e volta para a visão geral.
 
 ## Mesmo modelo de arte do Big Bang
 
@@ -39,6 +46,7 @@ Diferenças em relação ao Big Bang:
 | --- | --- |
 | `src/main.js` | Cena, os dois sistemas, o visual de cada planeta (`VISUAL`), câmera, rótulos e cliques |
 | `src/corpos.js` | O sol e os planetas (anéis, atmosfera, luas), no modelo do sistema solar do Big Bang |
+| `src/painel.js` | O painel da matéria: cartões dos trabalhos, filtros e navegação entre matérias |
 
 ## Regerando o `sistemas.js`
 

@@ -113,33 +113,132 @@
         .dica-toque { display: none; }
         @media (pointer: coarse) { .dica-mouse { display: none; } .dica-toque { display: inline; } }
 
-        /* ---------------- planeta em foco (o painel da matéria vem na próxima etapa) ---------------- */
-        .foco {
-            position: fixed; z-index: 6; left: 50%; bottom: 22px; transform: translate(-50%, 16px);
-            display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: center;
-            width: max-content; max-width: calc(100% - 32px);
-            padding: 14px 16px 14px 20px; border: 2px solid var(--red); background: rgba(0, 0, 0, .72);
-            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            opacity: 0; transition: opacity .35s var(--ease), transform .35s var(--ease);
+        /* ---------------- painel da matéria (abre ao clicar num planeta) ---------------- */
+        .painel {
+            position: fixed; z-index: 6; top: 100px; right: 24px; bottom: 24px;
+            width: min(560px, 42vw);
+            display: flex; flex-direction: column;
+            border: 2px solid var(--red); background: rgba(8, 5, 16, .86);
+            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            box-shadow: 10px 10px 0 rgba(52, 20, 57, .7);
+            opacity: 0; transform: translateX(24px);
+            transition: opacity .4s var(--ease), transform .45s var(--ease);
         }
-        .foco.on { opacity: 1; transform: translate(-50%, 0); }
-        .foco-txt { display: grid; gap: 3px; }
-        .foco-k { font: 500 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .14em; color: var(--trilha); }
-        .foco-nome { font: 800 18px/1.1 var(--display); letter-spacing: -.02em; text-transform: uppercase; }
-        .foco-qtd { font: 500 11px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-        .foco-voltar {
-            display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px;
-            border: 2px solid var(--red); border-radius: 0; background: transparent; cursor: pointer;
-            font: 500 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .1em;
+        .painel.on { opacity: 1; transform: none; }
+        .pa-topo { position: relative; padding: 22px 24px 18px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+        .pa-k { font: 500 10.5px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .14em; color: var(--trilha); padding-right: 44px; }
+        .pa-titulo { margin: 0; font: 800 clamp(24px, 2.6vw, 36px)/1 var(--display); letter-spacing: -.04em; text-transform: uppercase; padding-right: 44px; }
+        .pa-desc { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+        .pa-meta { display: flex; flex-wrap: wrap; gap: 6px 18px; font: 500 11px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+        .pa-meta b { color: var(--paper); font-weight: 500; }
+        .pa-fechar {
+            position: absolute; top: 16px; right: 16px; width: 38px; height: 38px;
+            border: 2px solid var(--red); border-radius: 0; background: transparent; cursor: pointer; font-size: 15px;
         }
-        .foco-voltar:hover { background: var(--red); }
-        .foco-voltar kbd { padding: 2px 6px; border: 1px solid rgba(229, 229, 229, .25); font: inherit; color: var(--sand); }
-        @media (pointer: coarse) { .foco-voltar kbd { display: none; } }
+        .pa-fechar:hover { background: var(--red); }
+        .pa-fechar:focus-visible, .pa-cab:focus-visible, .pa-nav button:focus-visible, .pa-filtro:focus-visible { outline: 2px solid var(--paper); outline-offset: 2px; }
+
+        .pa-filtros { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 24px; border-bottom: 1px solid var(--line); }
+        .pa-filtro {
+            display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; cursor: pointer;
+            border: 1px solid rgba(229, 229, 229, .18); border-radius: 0; background: transparent;
+            font: 500 12px/1.2 var(--body); color: var(--muted); transition: all .2s;
+        }
+        .pa-filtro i { font: 500 10px/1 var(--mono); font-style: normal; opacity: .7; }
+        .pa-filtro:hover { color: var(--paper); border-color: var(--paper); }
+        .pa-filtro.ativo { background: var(--red); border-color: var(--red); color: var(--paper); }
+
+        .pa-lista { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 12px 14px 16px; display: grid; gap: 10px; align-content: start; scrollbar-width: thin; scrollbar-color: var(--red) transparent; }
+        .pa-card { border: 1px solid var(--line); background: rgba(255, 255, 255, .025); transition: border-color .25s, background .25s; }
+        .pa-card:hover, .pa-card.aberto { border-color: color-mix(in srgb, var(--trilha) 60%, transparent); background: rgba(52, 20, 57, .35); }
+        .pa-cab {
+            display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: start; width: 100%;
+            padding: 14px 14px 14px 12px; border: 0; background: none; text-align: left; cursor: pointer;
+        }
+        /* número da lua: bolinha + número */
+        .pa-n { display: inline-flex; align-items: center; gap: 7px; padding-top: 2px; font: 500 11px/1 var(--mono); color: var(--trilha); }
+        .pa-n i { width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff, #cbbfe0 55%, #6d5a8a); box-shadow: 0 0 0 0 transparent; transition: box-shadow .3s; }
+        .pa-card:hover .pa-n i, .pa-card.aberto .pa-n i { box-shadow: 0 0 10px 2px #e9d5ff; }
+        .pa-cab-txt { display: grid; gap: 5px; min-width: 0; }
+        .pa-cab-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+        .pa-chip { padding: 3px 8px; background: var(--red); color: var(--paper); font: 600 10.5px/1.2 var(--body); }
+        .pa-tag { font: 500 10.5px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+        .pa-titulo-card { font: 700 15px/1.25 var(--display); letter-spacing: -.02em; }
+        .pa-resumo { font-size: 13px; line-height: 1.45; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .pa-card.aberto .pa-resumo { display: none; }
+        .pa-mais { font: 400 20px/1 var(--mono); color: var(--trilha); transition: transform .3s var(--ease); }
+        .pa-card.aberto .pa-mais { transform: rotate(45deg); }
+
+        .pa-corpo { display: grid; gap: 12px; padding: 0 14px 16px; }
+        .pa-midias { display: grid; gap: 10px; }
+        .pa-embed { position: relative; width: 100%; background: #0c0a14; border: 1px solid var(--line); }
+        .pa-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+        .pa-img { display: block; width: 100%; padding: 0; border: 1px solid var(--line); background: #fff; cursor: zoom-in; }
+        .pa-img img { display: block; width: 100%; max-height: 360px; object-fit: contain; }
+        .pa-texto { margin: 0; color: #CFCBC4; font-size: 14.5px; line-height: 1.65; }
+        .pa-links { display: flex; flex-wrap: wrap; gap: 8px; }
+        .pa-link {
+            display: inline-flex; align-items: center; gap: 8px; padding: 9px 13px;
+            background: var(--paper); color: #161920; font-weight: 600; font-size: 13px; transition: background .2s;
+        }
+        .pa-link:hover { background: var(--sand); }
+        .pa-link span { font-size: 11px; }
+        .pa-link-video { background: transparent; color: #CC90D5; border: 1px solid rgba(204, 144, 213, .5); }
+        .pa-link-video:hover { background: #CC90D5; color: #161920; }
+        .pa-link-github { background: transparent; color: var(--paper); border: 1px solid rgba(229, 229, 229, .3); }
+        .pa-link-github:hover { background: var(--paper); color: #161920; }
+        .pa-gaveta { border: 1px solid var(--line); background: rgba(255, 255, 255, .02); }
+        .pa-gaveta summary { display: flex; align-items: center; gap: 8px; padding: 11px 13px; cursor: pointer; list-style: none; font-weight: 600; font-size: 13.5px; }
+        .pa-gaveta summary::-webkit-details-marker { display: none; }
+        .pa-g-n { font: 500 10px/1 var(--mono); padding: 3px 7px; background: rgba(229, 229, 229, .08); color: var(--muted); }
+        .pa-g-icone { margin-left: auto; font: 400 18px/1 var(--mono); color: var(--trilha); transition: transform .3s var(--ease); }
+        .pa-gaveta[open] .pa-g-icone { transform: rotate(45deg); }
+        .pa-gaveta[open] summary { border-bottom: 1px solid var(--line); }
+        .pa-skills { list-style: none; margin: 0; padding: 4px 13px 10px; }
+        .pa-skills li { display: grid; grid-template-columns: 46px 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; line-height: 1.5; color: #CFCBC4; }
+        .pa-skills li:last-child { border-bottom: 0; }
+        .pa-skills b { font: 500 12px/1.5 var(--mono); color: var(--trilha); }
+        .pa-codigo { margin: 0; padding: 14px; overflow-x: auto; background: #07060c; font: 400 12px/1.6 var(--mono); color: var(--sand); }
+        .pa-hashtags { display: flex; flex-wrap: wrap; gap: 4px 12px; font: 500 11px/1 var(--mono); color: var(--dim); }
+        .pa-vazio { display: grid; place-items: center; gap: 8px; padding: 50px 20px; text-align: center; color: var(--muted); border: 1px dashed rgba(229, 229, 229, .2); }
+        .pa-vazio span { font-size: 22px; color: var(--trilha); }
+        .pa-vazio small { font: 500 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .14em; color: var(--dim); }
+
+        .pa-nav { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--line); }
+        .pa-nav button {
+            display: grid; gap: 4px; padding: 12px 18px; border: 0; background: transparent; cursor: pointer; text-align: left;
+            transition: background .2s;
+        }
+        .pa-nav button + button { border-left: 1px solid var(--line); text-align: right; }
+        .pa-nav button:hover { background: rgba(118, 43, 130, .35); }
+        .pa-nav small { font: 500 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+        .pa-nav span { font: 700 13px/1.2 var(--display); letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* linha do planeta (ou da lua) até o painel */
+        .linha-painel { position: fixed; inset: 0; z-index: 5; width: 100%; height: 100%; pointer-events: none; opacity: 0; transition: opacity .4s var(--ease); }
+        .linha-painel.on { opacity: 1; }
+        .linha-painel path { fill: none; stroke: var(--trilha); stroke-width: 1; stroke-opacity: .7; }
+        .linha-painel circle { fill: var(--trilha); }
+        /* nome do trabalho perto da lua */
+        .dica-lua {
+            position: fixed; top: 0; left: 0; z-index: 5; pointer-events: none;
+            padding: 5px 9px; border: 1px solid var(--trilha); background: rgba(8, 5, 16, .82);
+            font: 500 11px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap;
+            max-width: 46vw; overflow: hidden; text-overflow: ellipsis;
+            opacity: 0; transition: opacity .25s;
+        }
+        .dica-lua.on { opacity: 1; }
+
+        /* imagens ampliadas */
+        .lightbox { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 24px; background: rgba(5, 3, 10, .92); cursor: zoom-out; opacity: 0; transition: opacity .25s; }
+        .lightbox.on { opacity: 1; }
+        .lightbox img { max-width: 100%; max-height: 90vh; }
 
         /* entrada da interface */
         .topo, .rodape { opacity: 0; transition: opacity 1s var(--ease) .6s; }
         body.pronto .topo, body.pronto .rodape { opacity: 1; }
         body.pronto.com-foco .rodape { opacity: 0; transition-delay: 0s; }
+        body.com-foco .rodape { pointer-events: none; }
 
         @media (max-width: 720px) {
             .topo { padding-top: 16px; }
@@ -157,6 +256,21 @@
             .rodape { padding-bottom: 16px; }
             .legenda { font-size: 10px; gap: 6px 12px; }
             .dica { width: 100%; }
+            /* painel como folha que sobe de baixo; o planeta fica na parte de cima */
+            .painel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 62vh; height: 62dvh; border-width: 2px 0 0; box-shadow: none; transform: translateY(30px); transition: opacity .4s var(--ease), transform .45s var(--ease), height .45s var(--ease); }
+            /* com um trabalho aberto, a folha cresce para mostrar o material */
+            .painel.com-cartao { height: 80vh; height: 80dvh; }
+            .pa-desc { display: none; }
+            .pa-topo { padding: 16px 16px 14px; }
+            .pa-titulo { font-size: 22px; }
+            .pa-desc { font-size: 13px; }
+            .pa-filtros { padding: 10px 16px; overflow-x: auto; flex-wrap: nowrap; }
+            .pa-filtro { flex: none; }
+            .pa-lista { padding: 10px; }
+            .pa-cab { gap: 10px; padding: 12px 10px; }
+            body.com-foco .topo .cabeca .prototipo, body.com-foco .topo .titulo, body.com-foco .topo .kicker { display: none; }
+            body.com-foco .sistemas { display: none; }
+            .dica-lua { max-width: 80vw; }
         }
         @media (prefers-reduced-motion: reduce) { * { transition-duration: .01s !important; } }
     </style>
@@ -194,14 +308,28 @@
         <span class="dica"><span class="dica-mouse">Arraste para girar · role para aproximar · clique num planeta</span><span class="dica-toque">Arraste para girar · pinça para aproximar · toque num planeta</span></span>
     </footer>
 
-    <div class="foco" id="foco" hidden role="status">
-        <div class="foco-txt">
-            <span class="foco-k"><span id="foco-n">01</span> · painel da matéria na próxima etapa</span>
-            <span class="foco-nome" id="foco-nome"></span>
-            <span class="foco-qtd" id="foco-qtd"></span>
-        </div>
-        <button class="foco-voltar" id="foco-voltar" type="button">Voltar ao sistema <kbd>Esc</kbd></button>
-    </div>
+    <!-- Linha do planeta (ou da lua do trabalho em destaque) até o painel -->
+    <svg class="linha-painel" id="linha-painel" aria-hidden="true"><path d=""></path><circle r="3"></circle><circle r="2.5"></circle></svg>
+    <div class="dica-lua" id="dica-lua" aria-hidden="true"></div>
+
+    <!-- Painel da matéria: abre ao clicar num planeta -->
+    <aside class="painel" id="painel" hidden role="dialog" aria-labelledby="pa-titulo">
+        <header class="pa-topo">
+            <span class="pa-k"></span>
+            <h2 class="pa-titulo" id="pa-titulo"></h2>
+            <p class="pa-desc"></p>
+            <div class="pa-meta"></div>
+            <button class="pa-fechar" type="button" aria-label="Fechar e voltar ao sistema">✕</button>
+        </header>
+        <div class="pa-filtros" role="group" aria-label="Filtrar por submatéria"></div>
+        <div class="pa-lista"></div>
+        <nav class="pa-nav" aria-label="Outras matérias deste sistema">
+            <button class="pa-ant" type="button"><small>← Anterior</small><span></span></button>
+            <button class="pa-prox" type="button"><small>Próxima →</small><span></span></button>
+        </nav>
+    </aside>
+
+    <div class="lightbox" id="lightbox" hidden><img alt=""></div>
 
     <!-- As matérias e trabalhos vêm do mesmo arquivo do portfólio -->
     <script src="data/3ano.js"></script>

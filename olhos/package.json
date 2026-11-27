@@ -1,0 +1,14 @@
+{
+  "name": "olhos-portfolio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Os olhos do olho_port espalhados pelo portfólio (WebGL com three.js).",
+  "scripts": {
+    "build": "esbuild src/main.js --bundle --minify --format=iife --target=es2019 --outfile=olhos.js",
+    "dev": "esbuild src/main.js --bundle --sourcemap --format=iife --target=es2019 --outfile=olhos.js --watch"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.0",
+    "three": "0.180.0"
+  }
+}

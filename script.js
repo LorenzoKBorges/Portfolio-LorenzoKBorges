@@ -580,6 +580,20 @@ addEventListener('resize', () => {
 }, { passive: true });
 $('#hero-photo').addEventListener('load', () => { if (BH.ok) BH.refresh(); });
 
+// ---------------------------------------------------------------- olhos
+
+// Os olhos (olhos/olhos.js, ~510 KB com o three.js) só são baixados depois que o site aparece,
+// para não pesar na abertura. Eles ficam na página inicial e nas matérias (não nos sistemas solares).
+let olhosCarregados = false;
+function carregarOlhos() {
+  if (olhosCarregados) return;
+  olhosCarregados = true;
+  const s = document.createElement('script');
+  s.src = 'olhos/olhos.js';
+  s.async = true;
+  document.head.append(s);
+}
+
 // ---------------------------------------------------------------- abertura
 
 // O Big Bang (bigbang/bigbang.js, ~600 KB com o three.js) só é baixado por quem vai vê-lo
@@ -738,6 +752,7 @@ function initIntro() {
     levarBuracoParaOTopo();
     medirPlanta();
     construir();
+    setTimeout(carregarOlhos, 1500); // depois que a abertura sai da frente
     setTimeout(() => {
       cancelAnimationFrame(raf);
       if (window.BigBang) window.BigBang.descartar();
@@ -914,7 +929,10 @@ decorarPlanta();
 route();
 addEventListener('hashchange', route);
 initIntro();
-if (!HTML.classList.contains('intro')) medirPlanta();
+if (!HTML.classList.contains('intro')) {
+  medirPlanta();
+  addEventListener('load', carregarOlhos);
+}
 
 // Sistemas solares: ao voltar de sistemas.html, o site abre direto (sem a abertura) e na faixa de onde a pessoa saiu
 $('#ver-sistemas').addEventListener('click', () => {

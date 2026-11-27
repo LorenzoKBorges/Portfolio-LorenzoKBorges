@@ -76,6 +76,17 @@ p { margin: 0; }
   transition: transform .8s var(--ease);
 }
 .twinkles { position: absolute; inset: 0; }
+
+/* Olhos (olhos/olhos.js): uma camada de luz entre o céu e o conteúdo, então os olhos ficam por baixo
+   de textos, cartões e fotos. Na mistura "screen" o preto do canvas some e só a luz aparece. */
+.olhos-fx {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  mix-blend-mode: screen; opacity: 0; transition: opacity 1.2s var(--ease);
+}
+.olhos-fx.on { opacity: 1; }
+.olhos-fx canvas { display: block; }
+html.intro .olhos-fx { visibility: hidden; }
+html.olho-sob-ponteiro, html.olho-sob-ponteiro body { cursor: pointer; }
 .tw {
   position: absolute; width: var(--s); height: var(--s); border-radius: 50%;
   background: var(--c, #fff); box-shadow: 0 0 calc(var(--s) * 3) var(--c, #fff);

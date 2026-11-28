@@ -27,6 +27,8 @@ uniform vec3 uCam;      // posição da câmera
 uniform mat3 uRot;      // colunas: direita, cima, frente
 uniform float uFoco;    // 1 / tan(campo de visão / 2)
 uniform float uPix;     // tamanho de um pixel, em unidades do buraco, na distância do centro
+uniform vec2 uDesloc;   // o buraco sai do meio da tela (para dar lugar ao painel), em pixels
+uniform float uPick;    // 1 = em vez da imagem, devolve qual parte está neste pixel (clique)
 uniform float uS;       // força de cada parte: 1 = normal, mais que 1 = realçada, menos = apagada
 uniform float uH;
 uniform float uF;
@@ -176,7 +178,8 @@ vec3 ceu(vec3 d) {
 }
 
 void main() {
-  vec2 uv = (gl_FragCoord.xy - 0.5 * uRes) / (0.5 * uRes.y);
+  vec2 uvTela = (gl_FragCoord.xy - 0.5 * uRes) / (0.5 * uRes.y);
+  vec2 uv = (gl_FragCoord.xy - 0.5 * uRes - uDesloc) / (0.5 * uRes.y);
   vec3 rd = normalize(uRot * vec3(uv, uFoco));
   vec3 ro = uCam;
   float b0 = length(cross(ro, rd)); // distância do raio reto ao centro (para a singularidade)
@@ -193,6 +196,7 @@ void main() {
   float haze = 0.0;
   float halo = 0.0;
   float rmin = 1e9;
+  float jetQ = 1e9; // (clique) o quanto o raio chega perto do eixo dos jatos
   float transMin = 1.0;  // quanto do anel de fótons o disco da frente deixa passar
   vec3 p = ro, v = rd;
 
@@ -232,6 +236,10 @@ void main() {
       }
 
       // jatos
+      if (uPick > 0.5) {
+        float ay = abs(p.y);
+        if (ay > 1.4 && ay < JLEN * 0.85) jetQ = min(jetQ, length(p.xz) / (0.16 + 0.07 * ay));
+      }
       vec3 ej = jato(p, length(normalize(v).xz)) * dt * 0.9 * uJ;
       col += trans * ej;
       colF += transF * ej;
@@ -259,6 +267,24 @@ void main() {
   }
 
   float b = sqrt(h2);
+
+  // ---- clique: qual parte está neste pixel (o mesmo raio curvado, então vale de qualquer ângulo)
+  if (uPick > 0.5) {
+    float id = 0.0;
+    if (hit > 0.5) {
+      if (1.0 - transF > 0.5) id = 4.0;          // o disco passando na frente da sombra
+      else if (jetQ < 1.6) id = 5.0;             // um jato na frente da sombra
+      else id = b < 0.8 ? 1.0 : 2.0;             // o miolo é a singularidade; o resto, o horizonte
+    } else if (passa) {
+      if (b < BCRIT + 0.28) id = 3.0;            // o anel colado na sombra
+      else if (1.0 - trans > 0.3) id = 4.0;
+      else if (jetQ < 2.4) id = 5.0;
+      else if (b < BCRIT + 0.6) id = 3.0;
+    }
+    gl_FragColor = vec4(id * 40.0 / 255.0, 0.0, 0.0, 1.0);
+    return;
+  }
+
   if (hit > 0.5) {
     col = colF;
     trans = transF;
@@ -304,7 +330,7 @@ void main() {
   col += (vec3(0.42, 0.0, 0.85) * gA * 0.34 + vec3(0.55, 0.15, 0.9) * gB * 0.5) * brilho;
 
   col = min(col, vec3(1.0));
-  float vig = smoothstep(1.9, 0.5, length(uv));
+  float vig = smoothstep(1.9, 0.5, length(uvTela));
   col *= mix(0.6, 1.0, vig);
   gl_FragColor = vec4(col, 1.0);
 }
@@ -343,7 +369,7 @@ void main() {
   gl.enableVertexAttribArray(aLoc);
   gl.vertexAttribPointer(aLoc, 2, gl.FLOAT, false, 0, 0);
   var U = {};
-  ['uRes', 'uTime', 'uCam', 'uRot', 'uFoco', 'uPix', 'uS', 'uH', 'uF', 'uD', 'uJ'].forEach(function (n) { U[n] = gl.getUniformLocation(prog, n); });
+  ['uRes', 'uTime', 'uCam', 'uRot', 'uFoco', 'uPix', 'uDesloc', 'uPick', 'uS', 'uH', 'uF', 'uD', 'uJ'].forEach(function (n) { U[n] = gl.getUniformLocation(prog, n); });
 
   var reduzir = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var pequeno = Math.min(innerWidth, innerHeight) < 700;
@@ -351,13 +377,16 @@ void main() {
   // (e diminui sozinho se o aparelho não der conta)
   var escala = Math.min(window.devicePixelRatio || 1, 1.5) * (pequeno ? 0.55 : 0.75);
   var ESCALA_MIN = 0.3;
+  var celular = function () { return innerWidth <= 760; };
 
   // ------------------------------------------------------------------ câmera (gira em volta do centro)
   var FOV = 40 * Math.PI / 180;
+  var FOCO = 1 / Math.tan(FOV / 2);
   // roll: a câmera fica um pouco inclinada, como o disco do buraco do topo
   var cam = { az: 0.6, el: 0.5, dist: 70, roll: -0.32 };      // começa longe e chega perto (abertura)
   var alvo = { az: 0.6, el: 0.22, dist: 26, roll: -0.32 };    // para onde a câmera está indo
-  var vel = { az: 0, el: 0 };                  // inércia do arrasto
+  var vel = { az: 0, el: 0 };                                 // inércia do arrasto
+  var desloc = { x: 0, y: 0 };                                // o buraco sai do meio para dar lugar ao painel (px)
   var EL_MIN = -1.45, EL_MAX = 1.45, DIST_MIN = 5.5, DIST_MAX = 70;
   var girarSozinho = !reduzir;
   var ultimoToque = -1e9; // quando a pessoa mexeu pela última vez (o giro sozinho espera um pouco)
@@ -366,18 +395,30 @@ void main() {
   function distanciaInicial() { return innerWidth / innerHeight < 0.8 ? 40 : 26; } // em pé: mais longe
   alvo.dist = distanciaInicial();
 
-  // ------------------------------------------------------------------ partes (realce)
+  // ------------------------------------------------------------------ partes
   var PARTES = ['singularidade', 'horizonte', 'fotons', 'disco', 'jatos'];
+  var TEXTOS = {};
+  (window.SOBRE || []).forEach(function (p) { TEXTOS[p.id] = p; });
   var forca = { singularidade: 1, horizonte: 1, fotons: 1, disco: 1, jatos: 1 };
-  var realcada = null;   // parte realçada agora (mouse em cima ou clicada)
-  var fixa = null;       // parte clicada (fica realçada)
+  var aberta = null;  // parte com o painel aberto
+  var sobre = null;   // parte com o mouse em cima (na imagem ou na lista)
+  function realcada() { return sobre || aberta; }
   function alvoForca(nome) {
-    if (!realcada) return 1;
-    if (nome === realcada) return nome === 'singularidade' || nome === 'horizonte' ? 2.2 : 1.9;
+    var r = realcada();
+    if (!r) return 1;
+    if (nome === r) return nome === 'singularidade' || nome === 'horizonte' ? 2.2 : 1.9;
     // a singularidade fica dentro do horizonte: realçar uma deixa a outra visível
-    if (realcada === 'singularidade' && nome === 'horizonte') return 0.6;
+    if (r === 'singularidade' && nome === 'horizonte') return 0.6;
     return 0.22;
   }
+  // de onde olhar cada parte quando o painel abre (a câmera mantém o lado de onde está olhando)
+  var FOCO_PARTE = {
+    singularidade: { el: 0.28, dist: 13, roll: -0.25 },
+    horizonte: { el: 0.5, dist: 12.5, roll: -0.2 },
+    fotons: { el: 0.12, dist: 11.5, roll: -0.2 },
+    disco: { el: 0.62, dist: 25, roll: -0.3 },
+    jatos: { el: 0.04, dist: 46, roll: -0.12 },
+  };
 
   // ------------------------------------------------------------------ desenho
   function redimensionar() {
@@ -387,6 +428,7 @@ void main() {
     gl.viewport(0, 0, canvas.width, canvas.height);
   }
 
+  // base da câmera: posição e direções (direita, cima, frente), já com a inclinação (roll)
   function base() {
     var ce = Math.cos(cam.el);
     var pos = [cam.dist * ce * Math.sin(cam.az), cam.dist * Math.sin(cam.el), cam.dist * ce * Math.cos(cam.az)];
@@ -400,24 +442,86 @@ void main() {
     var cr = Math.cos(cam.roll), sr = Math.sin(cam.roll);
     var r2 = [rt[0] * cr + up[0] * sr, rt[1] * cr + up[1] * sr, rt[2] * cr + up[2] * sr];
     var u2 = [up[0] * cr - rt[0] * sr, up[1] * cr - rt[1] * sr, up[2] * cr - rt[2] * sr];
-    return { pos: pos, rot: [r2[0], r2[1], r2[2], u2[0], u2[1], u2[2], fw[0], fw[1], fw[2]] };
+    return { pos: pos, rt: r2, up: u2, fw: fw, rot: [r2[0], r2[1], r2[2], u2[0], u2[1], u2[2], fw[0], fw[1], fw[2]] };
   }
 
-  function desenhar(t) {
-    redimensionar();
-    var b = base();
+  function uniformes(t, b, pick) {
     gl.uniform2f(U.uRes, canvas.width, canvas.height);
     gl.uniform1f(U.uTime, t);
     gl.uniform3f(U.uCam, b.pos[0], b.pos[1], b.pos[2]);
     gl.uniformMatrix3fv(U.uRot, false, b.rot);
-    gl.uniform1f(U.uFoco, 1 / Math.tan(FOV / 2));
+    gl.uniform1f(U.uFoco, FOCO);
     gl.uniform1f(U.uPix, (2 * cam.dist * Math.tan(FOV / 2)) / canvas.height);
+    var k = canvas.width / (canvas.clientWidth || 1);
+    gl.uniform2f(U.uDesloc, desloc.x * k, -desloc.y * k);
+    gl.uniform1f(U.uPick, pick ? 1 : 0);
     gl.uniform1f(U.uS, forca.singularidade);
     gl.uniform1f(U.uH, forca.horizonte);
     gl.uniform1f(U.uF, forca.fotons);
     gl.uniform1f(U.uD, forca.disco);
     gl.uniform1f(U.uJ, forca.jatos);
+  }
+
+  function desenhar(t) {
+    redimensionar();
+    uniformes(t, base(), false);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+
+  // Qual parte está no ponto (x, y) da tela? O shader responde desenhando só aquele pixel.
+  // (feito antes do quadro normal, que desenha por cima)
+  function escolher(x, y, t) {
+    redimensionar();
+    var px = clamp(Math.floor(x * canvas.width / canvas.clientWidth), 0, canvas.width - 1);
+    var py = clamp(canvas.height - 1 - Math.floor(y * canvas.height / canvas.clientHeight), 0, canvas.height - 1);
+    gl.enable(gl.SCISSOR_TEST);
+    gl.scissor(px, py, 1, 1);
+    uniformes(t, base(), true);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    var cor = new Uint8Array(4);
+    gl.readPixels(px, py, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, cor);
+    gl.disable(gl.SCISSOR_TEST);
+    var id = Math.round(cor[0] / 40);
+    return id >= 1 && id <= 5 ? PARTES[id - 1] : null;
+  }
+
+  // ponto 3D -> ponto na tela (px), sem a curvatura da luz (serve para a linha até o painel)
+  function projetar(p, b) {
+    var d = [p[0] - b.pos[0], p[1] - b.pos[1], p[2] - b.pos[2]];
+    var z = d[0] * b.fw[0] + d[1] * b.fw[1] + d[2] * b.fw[2];
+    if (z <= 0.1) return null;
+    var x = (d[0] * b.rt[0] + d[1] * b.rt[1] + d[2] * b.rt[2]) / z * FOCO;
+    var y = (d[0] * b.up[0] + d[1] * b.up[1] + d[2] * b.up[2]) / z * FOCO;
+    var H = canvas.clientHeight;
+    return { x: canvas.clientWidth / 2 + desloc.x + x * H / 2, y: H / 2 + desloc.y - y * H / 2 };
+  }
+
+  // onde a linha do painel encosta em cada parte
+  function ancoraDaParte(nome, b) {
+    var c = projetar([0, 0, 0], b);
+    if (!c) return null;
+    var H = canvas.clientHeight;
+    var raioAnel = 2.6 / cam.dist * FOCO * H / 2; // raio da sombra na tela
+    var ang = -0.5; // para o lado de cima/direita (onde fica o painel)
+    if (nome === 'singularidade') return c;
+    if (nome === 'horizonte') return { x: c.x + Math.cos(ang) * raioAnel * 0.55, y: c.y + Math.sin(ang) * raioAnel * 0.55 };
+    if (nome === 'fotons') return { x: c.x + Math.cos(ang) * raioAnel * 1.03, y: c.y + Math.sin(ang) * raioAnel * 1.03 };
+    if (nome === 'disco') {
+      // um ponto do disco do lado direito da tela
+      var l = Math.hypot(b.rt[0], b.rt[2]) || 1;
+      return projetar([b.rt[0] / l * 7, 0, b.rt[2] / l * 7], b);
+    }
+    if (nome === 'jatos') {
+      // um ponto de um dos jatos que esteja dentro da tela (de preferência o de cima)
+      var H2 = canvas.clientHeight, W2 = canvas.clientWidth;
+      var alturas = [7, -7, 4.5, -4.5];
+      for (var i = 0; i < alturas.length; i++) {
+        var q = projetar([0, alturas[i], 0], b);
+        if (q && q.y > 60 && q.y < H2 - 60 && q.x > 20 && q.x < W2 - 20) return q;
+      }
+      return projetar([0, 4.5, 0], b);
+    }
+    return c;
   }
 
   // ------------------------------------------------------------------ animação
@@ -426,8 +530,10 @@ void main() {
   var lentos = 0;
   var quadros = 0;
   var tempo = 0; // segundos da animação (para quando a aba some)
-
+  var pedido = null; // { x, y, tipo: 'sobre' | 'clique' } — perguntar ao shader qual parte está ali
   var congelado = false; // (só para testes: para de desenhar e deixa o último quadro)
+  var pronto = false;
+
   function quadro(agora) {
     requestAnimationFrame(quadro);
     if (document.hidden || congelado) { antes = agora; return; }
@@ -453,37 +559,61 @@ void main() {
     cam.el += (alvo.el - cam.el) * k;
     cam.dist += (alvo.dist - cam.dist) * (1 - Math.pow(0.02, dt));
     cam.roll += (alvo.roll - cam.roll) * k;
+    // o buraco sai do meio quando o painel abre
+    var dAlvo = deslocamentoPainel();
+    desloc.x += (dAlvo.x - desloc.x) * k;
+    desloc.y += (dAlvo.y - desloc.y) * k;
 
     // realce das partes: muda devagar
     PARTES.forEach(function (n) { forca[n] += (alvoForca(n) - forca[n]) * (1 - Math.pow(0.002, dt)); });
 
+    // pergunta ao shader qual parte está embaixo do ponteiro (antes de desenhar o quadro)
+    if (pedido) {
+      var q = pedido;
+      pedido = null;
+      var parte = escolher(q.x, q.y, tempo);
+      if (q.tipo === 'clique') { if (parte) abrir(parte); }
+      else mostrarSobre(parte, q.x, q.y);
+    }
+
     desenhar(tempo);
+    desenharLinha();
     if (!pronto) { pronto = true; document.body.classList.add('pronto'); }
   }
-  var pronto = false;
   requestAnimationFrame(quadro);
 
-  // ------------------------------------------------------------------ arrastar, rolar, pinça
+  // ------------------------------------------------------------------ arrastar, rolar, pinça, clicar
   var arrastando = false;
   var ponteiros = new Map();
   var distPinca = 0;
+  var inicio = null; // onde e quando o dedo/mouse desceu (para saber se foi um clique ou um arrasto)
+  var ultimoSobre = 0;
   canvas.addEventListener('pointerdown', function (e) {
     canvas.setPointerCapture(e.pointerId);
     ponteiros.set(e.pointerId, { x: e.clientX, y: e.clientY });
     arrastando = true;
     vel.az = vel.el = 0;
     ultimoToque = performance.now();
+    inicio = ponteiros.size === 1 ? { x: e.clientX, y: e.clientY, t: performance.now() } : null;
     if (ponteiros.size === 2) {
       var p = Array.from(ponteiros.values());
       distPinca = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
     }
   });
   canvas.addEventListener('pointermove', function (e) {
-    if (!ponteiros.has(e.pointerId)) return;
+    if (!ponteiros.has(e.pointerId)) {
+      // mouse passando por cima: qual parte está ali? (no máximo ~14 vezes por segundo)
+      if (e.pointerType === 'mouse' && performance.now() - ultimoSobre > 70) {
+        ultimoSobre = performance.now();
+        pedido = { x: e.clientX, y: e.clientY, tipo: 'sobre' };
+      }
+      return;
+    }
     var antigo = ponteiros.get(e.pointerId);
     var novo = { x: e.clientX, y: e.clientY };
     ponteiros.set(e.pointerId, novo);
     ultimoToque = performance.now();
+    if (inicio && Math.hypot(novo.x - inicio.x, novo.y - inicio.y) > 6) inicio = null; // virou arrasto
     if (ponteiros.size === 2) {
       var p = Array.from(ponteiros.values());
       var d = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
@@ -498,20 +628,49 @@ void main() {
     alvo.el = clamp(alvo.el + del, EL_MIN, EL_MAX);
     vel.az = daz * 0.9;
     vel.el = del * 0.9;
+    mostrarSobre(null);
   });
   function soltar(e) {
+    if (e.type === 'pointerup' && inicio && ponteiros.size === 1 && performance.now() - inicio.t < 450) {
+      pedido = { x: e.clientX, y: e.clientY, tipo: 'clique' }; // foi um clique (ou toque): abre a parte
+    }
+    inicio = null;
     ponteiros.delete(e.pointerId);
     if (ponteiros.size < 2) distPinca = 0;
     if (ponteiros.size === 0) arrastando = false;
   }
   canvas.addEventListener('pointerup', soltar);
   canvas.addEventListener('pointercancel', soltar);
+  canvas.addEventListener('pointerleave', function () { mostrarSobre(null); });
   canvas.addEventListener('wheel', function (e) {
     e.preventDefault();
     ultimoToque = performance.now();
     alvo.dist = clamp(alvo.dist * Math.exp(e.deltaY * 0.0012), DIST_MIN, DIST_MAX);
   }, { passive: false });
-  canvas.addEventListener('dblclick', function () { irPara('inclinado'); });
+  canvas.addEventListener('dblclick', function () { if (!aberta) irPara('inclinado'); });
+
+  // ------------------------------------------------------------------ mouse em cima de uma parte
+  var dicaParte = document.getElementById('dica-parte');
+  function mostrarSobre(parte, x, y) {
+    if (parte !== sobre) {
+      sobre = parte;
+      canvas.style.cursor = parte ? 'pointer' : '';
+      marcarLista();
+    }
+    if (!dicaParte) return;
+    if (!parte || parte === aberta) { dicaParte.classList.remove('on'); return; }
+    var t = TEXTOS[parte];
+    var n = PARTES.indexOf(parte) + 1;
+    dicaParte.innerHTML = '';
+    var b1 = document.createElement('b');
+    b1.textContent = '0' + n + ' · ' + (t ? t.nome : parte);
+    var s1 = document.createElement('span');
+    s1.textContent = 'Clique para abrir';
+    dicaParte.append(b1, s1);
+    var w = dicaParte.offsetWidth || 180;
+    dicaParte.style.transform = 'translate(' + Math.min(x + 16, innerWidth - w - 12) + 'px,' + (y + 18) + 'px)';
+    dicaParte.classList.add('on');
+  }
 
   // ------------------------------------------------------------------ pontos de vista
   var VISTAS = {
@@ -520,6 +679,13 @@ void main() {
     lado: { el: 0.03, dist: 1.1, roll: -0.2 },
     baixo: { el: -0.38, dist: 1.15, roll: 0.3 },
   };
+  function marcarVista(nome) {
+    document.querySelectorAll('[data-vista]').forEach(function (b) {
+      var on = b.dataset.vista === nome;
+      b.classList.toggle('ativo', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+  }
   function irPara(nome) {
     var v = VISTAS[nome];
     if (!v) return;
@@ -528,11 +694,7 @@ void main() {
     alvo.roll = v.roll;
     vel.az = vel.el = 0;
     ultimoToque = performance.now();
-    document.querySelectorAll('[data-vista]').forEach(function (b) {
-      var on = b.dataset.vista === nome;
-      b.classList.toggle('ativo', on);
-      b.setAttribute('aria-pressed', String(on));
-    });
+    marcarVista(nome);
   }
   document.querySelectorAll('[data-vista]').forEach(function (b) {
     b.addEventListener('click', function () { irPara(b.dataset.vista); });
@@ -547,42 +709,145 @@ void main() {
     botaoGirar.addEventListener('click', function () { girarSozinho = !girarSozinho; marcarGirar(); });
   }
 
-  // ------------------------------------------------------------------ partes: passar o mouse realça, clicar fixa
+  // ------------------------------------------------------------------ painel da parte
+  var painel = document.getElementById('painel');
+  var linha = document.getElementById('linha-painel');
+  var caminho = linha ? linha.querySelector('path') : null;
+  var pontos = linha ? linha.querySelectorAll('circle') : [];
+  var camAntes = null; // de onde a câmera estava antes de abrir o painel (para voltar ao fechar)
+
+  function deslocamentoPainel() {
+    if (!aberta) return { x: 0, y: 0 };
+    if (celular()) return { x: 0, y: -innerHeight * 0.27 }; // o painel sobe de baixo
+    var larguraPainel = Math.min(540, innerWidth * 0.42);
+    return { x: -(larguraPainel + 28) / 2, y: 0 };
+  }
+
+  function preencher(nome) {
+    var t = TEXTOS[nome] || { nome: nome, titulo: '', fisica: '', texto: [] };
+    var i = PARTES.indexOf(nome);
+    painel.dataset.parte = nome;
+    painel.querySelector('.pa-icone').className = 'pa-icone p-icone i-' + nome;
+    painel.querySelector('.pa-k').textContent = 'Sobre mim · ' + ('0' + (i + 1)) + '/05';
+    painel.querySelector('.pa-titulo').textContent = t.nome;
+    painel.querySelector('.pa-sub').textContent = t.titulo;
+    painel.querySelector('.pa-fisica').textContent = t.fisica || '';
+    var corpo = painel.querySelector('.pa-corpo');
+    corpo.innerHTML = '';
+    (t.texto || []).forEach(function (par) {
+      var p = document.createElement('p');
+      p.textContent = par;
+      corpo.append(p);
+    });
+    corpo.scrollTop = 0;
+    var ant = PARTES[(i + 4) % 5];
+    var prox = PARTES[(i + 1) % 5];
+    painel.querySelector('.pa-ant span').textContent = TEXTOS[ant] ? TEXTOS[ant].nome : ant;
+    painel.querySelector('.pa-prox span').textContent = TEXTOS[prox] ? TEXTOS[prox].nome : prox;
+  }
+
+  function abrir(nome) {
+    if (PARTES.indexOf(nome) < 0) return;
+    if (!aberta) camAntes = { el: alvo.el, dist: alvo.dist, roll: alvo.roll };
+    aberta = nome;
+    sobre = null;
+    if (dicaParte) dicaParte.classList.remove('on');
+    canvas.style.cursor = '';
+    preencher(nome);
+    painel.hidden = false;
+    requestAnimationFrame(function () { painel.classList.add('on'); });
+    document.body.classList.add('com-painel');
+    // a câmera vai até um bom ponto de vista para a parte (no celular, de mais longe)
+    var f = FOCO_PARTE[nome];
+    alvo.el = f.el;
+    alvo.dist = f.dist * (celular() ? (f.dist < 20 ? 2.1 : 1.35) : 1);
+    alvo.roll = f.roll;
+    vel.az = vel.el = 0;
+    ultimoToque = performance.now();
+    marcarVista(null);
+    marcarLista();
+  }
+
+  function fechar() {
+    if (!aberta) return;
+    aberta = null;
+    painel.classList.remove('on');
+    document.body.classList.remove('com-painel');
+    setTimeout(function () { if (!aberta) painel.hidden = true; }, 350);
+    if (camAntes) { alvo.el = camAntes.el; alvo.dist = camAntes.dist; alvo.roll = camAntes.roll; }
+    camAntes = null;
+    ultimoToque = performance.now();
+    marcarLista();
+  }
+
+  function vizinha(passo) {
+    if (!aberta) return;
+    abrir(PARTES[(PARTES.indexOf(aberta) + passo + 5) % 5]);
+  }
+
+  if (painel) {
+    painel.querySelector('.pa-fechar').addEventListener('click', fechar);
+    painel.querySelector('.pa-ant').addEventListener('click', function () { vizinha(-1); });
+    painel.querySelector('.pa-prox').addEventListener('click', function () { vizinha(1); });
+  }
+
+  // linha da parte até o painel (como nos sistemas solares)
+  function desenharLinha() {
+    if (!linha) return;
+    if (!aberta || celular() || !painel.classList.contains('on')) { linha.classList.remove('on'); return; }
+    var b = base();
+    var a = ancoraDaParte(aberta, b);
+    var rp = painel.getBoundingClientRect();
+    var t = painel.querySelector('.pa-titulo').getBoundingClientRect();
+    if (!a || a.x > rp.left - 30) { linha.classList.remove('on'); return; }
+    var fimX = rp.left;
+    var fimY = clamp(t.top + t.height / 2, rp.top + 20, rp.bottom - 20);
+    var cotovelo = fimX - Math.max(40, (fimX - a.x) * 0.35);
+    caminho.setAttribute('d', 'M' + a.x.toFixed(1) + ' ' + a.y.toFixed(1) + ' L' + cotovelo.toFixed(1) + ' ' + fimY.toFixed(1) + ' L' + fimX.toFixed(1) + ' ' + fimY.toFixed(1));
+    pontos[0].setAttribute('cx', a.x.toFixed(1));
+    pontos[0].setAttribute('cy', a.y.toFixed(1));
+    pontos[1].setAttribute('cx', fimX.toFixed(1));
+    pontos[1].setAttribute('cy', fimY.toFixed(1));
+    linha.classList.add('on');
+  }
+
+  // ------------------------------------------------------------------ lista das partes: passar o mouse realça, clicar abre
   var botoesParte = Array.prototype.slice.call(document.querySelectorAll('[data-parte]'));
-  function marcarPartes() {
+  function marcarLista() {
+    var r = realcada();
     botoesParte.forEach(function (b) {
-      b.classList.toggle('ativo', b.dataset.parte === realcada);
-      b.setAttribute('aria-pressed', String(b.dataset.parte === fixa));
+      b.classList.toggle('ativo', b.dataset.parte === r);
+      b.setAttribute('aria-pressed', String(b.dataset.parte === aberta));
     });
   }
   botoesParte.forEach(function (b) {
-    b.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse') { realcada = b.dataset.parte; marcarPartes(); } });
-    b.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') { realcada = fixa; marcarPartes(); } });
-    b.addEventListener('focus', function () { realcada = b.dataset.parte; marcarPartes(); });
-    b.addEventListener('blur', function () { realcada = fixa; marcarPartes(); });
+    b.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse') { sobre = b.dataset.parte; marcarLista(); } });
+    b.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') { sobre = null; marcarLista(); } });
     b.addEventListener('click', function () {
-      fixa = fixa === b.dataset.parte ? null : b.dataset.parte;
-      realcada = fixa;
-      marcarPartes();
+      if (aberta === b.dataset.parte) fechar(); else abrir(b.dataset.parte);
     });
   });
+
   addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') { fixa = realcada = null; marcarPartes(); }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'Escape') { fechar(); return; }
     var n = Number(e.key);
-    if (n >= 1 && n <= 5 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      var nome = PARTES[n - 1];
-      fixa = fixa === nome ? null : nome;
-      realcada = fixa;
-      marcarPartes();
-    }
+    if (n >= 1 && n <= 5) { abrir(PARTES[n - 1]); return; }
+    if (aberta && e.key === 'ArrowLeft') vizinha(-1);
+    if (aberta && e.key === 'ArrowRight') vizinha(1);
   });
 
   // para testes
   window.buracoNegro = {
-    cam: cam, alvo: alvo, forca: forca,
+    cam: cam, alvo: alvo, forca: forca, desloc: desloc,
     get escala() { return escala; },
-    realcar: function (nome) { fixa = realcada = nome; marcarPartes(); },
+    get aberta() { return aberta; },
+    abrir: abrir,
+    fechar: fechar,
     irPara: irPara,
+    clicar: function (x, y) { pedido = { x: x, y: y, tipo: 'clique' }; },
+    ancora: function (nome) { return ancoraDaParte(nome, base()); },
     congelar: function (sim) { congelado = sim !== false; },
+    realcar: function (nome) { sobre = nome; marcarLista(); },
   };
 })();

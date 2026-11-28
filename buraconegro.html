@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Buraco negro · Lorenzo Kurrle Borges</title>
-    <meta name="description" content="Protótipo: um buraco negro em 3D com cinco partes, para a seção Sobre mim do portfólio.">
+    <meta name="description" content="Sobre mim em 3D: um buraco negro com cinco partes; clique numa delas para ler.">
     <meta name="theme-color" content="#07070c">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -94,6 +94,72 @@
         .dica-toque { display: none; }
         @media (pointer: coarse) { .dica-mouse { display: none; } .dica-toque { display: inline; } }
 
+        body.com-painel .partes-bloco { opacity: 0; pointer-events: none; transform: translateX(16px); }
+        /* com o painel aberto, o rodapé fica só do lado livre */
+        body.com-painel .rodape { padding-right: calc(min(540px, 42vw) + 48px); }
+        body.com-painel .dica { display: none; }
+        .partes-bloco { transition: opacity .35s var(--ease), transform .35s var(--ease); }
+
+        /* ---------------- painel da parte (abre ao clicar numa das 5 regiões) ---------------- */
+        .painel {
+            position: fixed; z-index: 6; top: 100px; right: 24px; bottom: 24px;
+            width: min(540px, 42vw);
+            display: flex; flex-direction: column;
+            border: 2px solid var(--red); background: rgba(8, 5, 16, .86);
+            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            box-shadow: 10px 10px 0 rgba(52, 20, 57, .7);
+            opacity: 0; transform: translateX(24px);
+            transition: opacity .4s var(--ease), transform .45s var(--ease);
+        }
+        .painel.on { opacity: 1; transform: none; }
+        .pa-topo { position: relative; display: grid; gap: 10px; padding: 24px 26px 20px; border-bottom: 1px solid rgba(229, 229, 229, .12); }
+        .pa-linha1 { display: flex; align-items: center; gap: 12px; padding-right: 48px; }
+        .pa-icone { flex: none; }
+        .pa-k { font: 500 10.5px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .14em; color: var(--lilas); }
+        .pa-titulo { margin: 0; font: 800 clamp(24px, 2.6vw, 36px)/1 var(--display); letter-spacing: -.04em; text-transform: uppercase; padding-right: 40px; }
+        .pa-sub { margin: 0; font: 700 clamp(16px, 1.5vw, 19px)/1.3 var(--display); letter-spacing: -.02em; color: var(--lilas); }
+        .pa-fisica { margin: 2px 0 0; padding-left: 12px; border-left: 2px solid var(--red); font: 500 11px/1.5 var(--mono); letter-spacing: .02em; color: var(--muted); }
+        .pa-fechar {
+            position: absolute; top: 18px; right: 18px; width: 38px; height: 38px;
+            border: 2px solid var(--red); border-radius: 0; background: transparent; cursor: pointer; font-size: 15px;
+        }
+        .pa-fechar:hover { background: var(--red); }
+        .pa-corpo {
+            flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 22px 26px 26px;
+            scrollbar-width: thin; scrollbar-color: var(--red) transparent;
+        }
+        .pa-corpo p { margin: 0 0 16px; max-width: 62ch; font-size: 16px; line-height: 1.65; color: #d6d2cc; }
+        .pa-corpo p:first-child { font-size: 18px; line-height: 1.55; color: var(--paper); }
+        .pa-corpo p:last-child { margin-bottom: 0; }
+        .painel.on .pa-corpo p { animation: pa-entra .5s var(--ease) both; }
+        .painel.on .pa-corpo p:nth-child(2) { animation-delay: .06s; }
+        .painel.on .pa-corpo p:nth-child(3) { animation-delay: .12s; }
+        .painel.on .pa-corpo p:nth-child(4) { animation-delay: .18s; }
+        .painel.on .pa-corpo p:nth-child(5) { animation-delay: .24s; }
+        @keyframes pa-entra { from { opacity: 0; transform: translateY(8px); } }
+        @media (prefers-reduced-motion: reduce) { .painel.on .pa-corpo p { animation: none; } }
+        .pa-nav { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid rgba(229, 229, 229, .12); }
+        .pa-nav button { display: grid; gap: 4px; padding: 12px 18px; border: 0; background: transparent; cursor: pointer; text-align: left; transition: background .2s; }
+        .pa-nav button + button { border-left: 1px solid rgba(229, 229, 229, .12); text-align: right; }
+        .pa-nav button:hover { background: rgba(118, 43, 130, .35); }
+        .pa-nav small { font: 500 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+        .pa-nav span { font: 700 13px/1.2 var(--display); letter-spacing: -.01em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pa-fechar:focus-visible, .pa-nav button:focus-visible { outline: 2px solid var(--paper); outline-offset: 2px; }
+
+        /* linha da parte até o painel, e o nome da parte embaixo do mouse */
+        .linha-painel { position: fixed; inset: 0; z-index: 5; width: 100%; height: 100%; pointer-events: none; opacity: 0; transition: opacity .4s var(--ease); }
+        .linha-painel.on { opacity: 1; }
+        .linha-painel path { fill: none; stroke: var(--lilas); stroke-width: 1; stroke-opacity: .7; }
+        .linha-painel circle { fill: var(--lilas); }
+        .dica-parte {
+            position: fixed; top: 0; left: 0; z-index: 7; display: grid; gap: 2px; padding: 7px 11px 8px; pointer-events: none;
+            border: 1px solid rgba(201, 173, 255, .4); background: rgba(10, 8, 18, .8); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+            opacity: 0; transition: opacity .2s;
+        }
+        .dica-parte.on { opacity: 1; }
+        .dica-parte b { font: 700 12px/1.2 var(--display); letter-spacing: -.01em; text-transform: uppercase; white-space: nowrap; }
+        .dica-parte span { font: 500 10px/1.2 var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+
         .sem-webgl-aviso { display: none; position: fixed; inset: 0; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
         body.sem-webgl .sem-webgl-aviso { display: grid; }
 
@@ -118,6 +184,17 @@
             .vistas-rotulo, .v-lg { display: none; }
             .vista-btn { flex: none; padding: 8px 9px; font-size: 10px; }
             .dica { width: 100%; font-size: 10px; }
+            /* painel como folha que sobe de baixo; o buraco fica na parte de cima */
+            .painel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 60vh; height: 60dvh; border-width: 2px 0 0; box-shadow: none; transform: translateY(30px); }
+            .pa-topo { padding: 16px 16px 14px; gap: 8px; }
+            .pa-titulo { font-size: 22px; }
+            .pa-sub { font-size: 15px; }
+            .pa-corpo { padding: 16px 16px 20px; }
+            .pa-corpo p { font-size: 15px; }
+            .pa-corpo p:first-child { font-size: 16px; }
+            .pa-fechar { top: 12px; right: 12px; }
+            body.com-painel .rodape, body.com-painel .partes-bloco { opacity: 0; pointer-events: none; }
+            body.com-painel .topo .assinatura, body.com-painel .topo .kicker { display: none; }
         }
     </style>
 </head>
@@ -131,10 +208,10 @@
             <a class="voltar-site" href="index.html">← Portfólio</a>
             <span class="kicker">Sobre mim · em 3D</span>
             <h1 class="titulo">Buraco negro</h1>
-            <span class="assinatura">Protótipo · arte e movimento</span>
+            <span class="assinatura">Protótipo · clique numa das 5 partes</span>
         </div>
         <nav class="partes-bloco" aria-label="Partes do buraco negro">
-            <p class="partes-rotulo">As 5 partes · passe o mouse para realçar</p>
+            <p class="partes-rotulo">As 5 partes · clique para ler</p>
             <ul class="partes">
                 <li><button class="parte" type="button" data-parte="singularidade" aria-pressed="false"><span class="p-icone i-singularidade" aria-hidden="true"></span><span class="p-nome">Singularidade</span><span class="p-n">01</span></button></li>
                 <li><button class="parte" type="button" data-parte="horizonte" aria-pressed="false"><span class="p-icone i-horizonte" aria-hidden="true"></span><span class="p-nome">Horizonte de eventos</span><span class="p-n">02</span></button></li>
@@ -156,11 +233,32 @@
             <button class="vista-btn" type="button" id="girar-sozinho" aria-pressed="true"><span aria-hidden="true">↻</span> Girar<span class="v-lg"> sozinho</span></button>
         </div>
         <span class="dica">
-            <span class="dica-mouse">Arraste para girar · role para aproximar · teclas 1 a 5 realçam as partes</span>
-            <span class="dica-toque">Arraste para girar · pince para aproximar</span>
+            <span class="dica-mouse">Clique numa parte para ler · arraste para girar · role para aproximar · teclas 1 a 5</span>
+            <span class="dica-toque">Toque numa parte para ler · arraste para girar · pince para aproximar</span>
         </span>
     </footer>
 
+    <!-- Linha da parte (no buraco) até o painel, e o nome da parte embaixo do mouse -->
+    <svg class="linha-painel" id="linha-painel" aria-hidden="true"><path d=""></path><circle r="3"></circle><circle r="2.5"></circle></svg>
+    <div class="dica-parte" id="dica-parte" aria-hidden="true"></div>
+
+    <!-- Painel da parte: abre ao clicar numa das 5 regiões (texto em data/sobre.js) -->
+    <aside class="painel" id="painel" hidden role="dialog" aria-labelledby="pa-titulo">
+        <header class="pa-topo">
+            <div class="pa-linha1"><span class="pa-icone p-icone" aria-hidden="true"></span><span class="pa-k"></span></div>
+            <h2 class="pa-titulo" id="pa-titulo"></h2>
+            <p class="pa-sub"></p>
+            <p class="pa-fisica"></p>
+            <button class="pa-fechar" type="button" aria-label="Fechar e voltar ao buraco negro">✕</button>
+        </header>
+        <div class="pa-corpo"></div>
+        <nav class="pa-nav">
+            <button class="pa-ant" type="button"><small>← Anterior</small><span></span></button>
+            <button class="pa-prox" type="button"><small>Próxima →</small><span></span></button>
+        </nav>
+    </aside>
+
+    <script src="data/sobre.js"></script>
     <script src="buraconegro/buraconegro.js"></script>
 </body>
 </html>
